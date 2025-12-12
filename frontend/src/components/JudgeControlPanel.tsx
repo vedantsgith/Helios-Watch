@@ -15,19 +15,20 @@ export const JudgeControlPanel: React.FC = () => {
         setActiveGraphTab(event_type);
 
         try {
-            // "duration: 40" corresponds to 4 seconds of playback time (at 0.1s tick rate)
+            // Matches the backend endpoint (Port 8000)
+            // "duration: 17" corresponds to ~5 seconds of playback time (at 0.3s tick rate)
             await axios.post('http://127.0.0.1:8000/simulate', {
                 type: type,
-                duration: 13,
+                duration: 17,
                 event_type: event_type
             });
             // Near-instant cooldown for rapid testing
             setTimeout(() => setLoading(false), 100);
 
-            // AUTO-REVERT: Wipe simulation data after it finishes playing (4s duration + buffer)
+            // AUTO-REVERT: Wipe simulation data after it finishes playing (5s duration + buffer)
             setTimeout(() => {
                 useStore.getState().revertToRealData();
-            }, 4500);
+            }, 5500);
 
         } catch (e) {
             console.error("Simulation failed", e);

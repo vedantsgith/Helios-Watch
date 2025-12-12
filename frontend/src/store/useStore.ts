@@ -37,6 +37,12 @@ export interface HistoryPoint {
     value: number;
 }
 
+export interface User {
+    id: number;
+    email: string;
+}
+
+
 export interface SystemState {
     dataPoints: SolarPoint[];
     currentFlux: number;
@@ -46,6 +52,7 @@ export interface SystemState {
     spaceWeather: SpaceWeather;
     activeRegions: ActiveRegion[]; // New State
     calculus: CalculusData;        // New State
+    user: User | null;
 
     // Multi-Metric History (Accumulated on Frontend)
     windHistory: { timestamp: string; value: number }[];
@@ -76,6 +83,7 @@ export interface SystemState {
     setTelemetryHistory: (history: { wind: any[], kp: any[], proton: any[] }) => void;
     setActiveGraphTab: (tab: 'flux' | 'wind' | 'kp' | 'proton') => void;
     revertToRealData: () => void;
+    setUser: (user: User | null) => void;
 }
 
 // 2. Create the Store
@@ -102,6 +110,9 @@ export const useStore = create<SystemState>((set) => ({
     realProtonHistory: [],
     activeGraphTab: 'flux', // Default Tab
     visualSimulation: { active: false, level: 'NONE' },
+    user: null,
+
+    setUser: (user) => set({ user }),
     setVisualSimulation: () => { }, // No-op for now as we reverted sim features
 
     setHistory: (points) => set({

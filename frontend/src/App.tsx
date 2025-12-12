@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { SolarChart } from './components/SolarChart';
 import { EarthGlobe } from './components/EarthGlobe';
 import { JudgeControlPanel } from './components/JudgeControlPanel';
@@ -6,11 +7,31 @@ import { FullScreenAlert } from './components/FullScreenAlert';
 import { ViewSelector } from './components/ViewSelector';
 import { PhysicsView } from './components/views/PhysicsView';
 import { HistoryView } from './components/views/HistoryView';
+import { BrownieLogin } from './components/BrownieLogin';
 import { useStore } from './store/useStore';
-import { Globe, Radio, Server } from 'lucide-react';
+import { Globe, Radio, Server, LogOut } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import axios from 'axios';
+import React from 'react';
 
-function App() {
-  const { addDataPoint, systemStatus, setSystemStatus, currentFlux, spaceWeather } = useStore();
+// Configure Axios
+const api = axios.create({
+  baseURL: 'http://127.0.0.1:8000',
+  withCredentials: true
+});
+
+// Protected Route Component
+const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
+  const user = useStore((state) => state.user);
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+function Dashboard() {
+  const { addDataPoint, systemStatus, setSystemStatus, currentFlux, spaceWeather, user, setUser } = useStore();
   const [currentView, setCurrentView] = useState<'live' | 'history' | 'physics'>('live');
 
   useEffect(() => {
@@ -82,7 +103,39 @@ function App() {
         </div>
 
         {/* View Selector (Center/Right) */}
-        <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
+        <div className="flex gap-3 items-center">
+          <div className="text-right mr-4 hidden md:block">
+            <p className="text-[10px] uppercase text-gray-400 tracking-widest">Logged in as</p>
+            <p className="text-sm font-bold text-orange-200">{user?.email}</p>
+          </div>
+
+          <div className="glass-card !rounded-full px-6 py-2 flex items-center gap-3">
+            <Server size={14} className={systemStatus === 'ONLINE' ? "text-green-400" : "text-red-400"} />
+            <span className="text-sm font-bold text-gray-200">{systemStatus}</span>
+          </div>
+          <div className="glass-card !rounded-full px-6 py-2 flex items-center gap-3">
+            <Radio size={14} className="text-blue-400 animate-pulse" />
+            <span className="text-sm font-bold text-gray-200">LIVE FEED</span>
+          </div>
+
+          <button
+            onClick={async () => {
+              try {
+                await api.post('/api/auth/logout');
+                setUser(null);
+                window.location.href = '/login';
+              } catch (e) {
+                console.error("Logout failed", e);
+              }
+            }}
+            className="glass-card !rounded-full px-4 py-2 flex items-center gap-2 hover:bg-white/10 transition-colors cursor-pointer text-red-300 border-red-500/30"
+            title="Logout"
+          >
+            <LogOut size={14} />
+          </button>
+
+          <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
+        </div>
       </header>
 
       {/* MAIN CONTENT AREA */}
@@ -173,6 +226,55 @@ function App() {
 
       </main>
     </div>
+  );
+}
+
+function AppContent() {
+  const [loading, setLoading] = useState(true);
+  const setUser = useStore((state) => state.setUser);
+
+  useEffect(() => {
+    // Check if we have a session
+    api.get('/api/auth/me')
+      .then(res => {
+        setUser(res.data.user);
+      })
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [setUser]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center text-white">
+        <Loader2 className="animate-spin w-10 h-10 text-orange-500" />
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/login" element={<BrownieLogin />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
 

@@ -1,7 +1,11 @@
 fastapi
-uvicorn[standard]
+uvicorn
 websockets
-httpx
-pydantic
-python-dotenv
+numpy
 pandas
+pydantic
+itsdangerous
+email-validator
+sqlalchemy
+python-multipart
+python-dotenv

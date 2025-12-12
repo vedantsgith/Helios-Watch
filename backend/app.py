@@ -1,30 +1,61 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 import asyncio
 import json
+import secrets
 from datetime import datetime
 from schemas import WSMessage
 from fetcher import fetch_noaa_data
 from simulator import generate_flare
 from derivative_engine import HybridEngine  # NEW: Hybrid Layer
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+from brownie_auth.routes import router as brownie_router
 
 # THIS IS THE MISSING LINE CAUSING YOUR ERROR
 app = FastAPI()
 
+# Register Brownie Auth Routes
+app.include_router(brownie_router)
+
 # Allow Frontend to talk to Backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],  # Specific origins for cookies
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Session Middleware (Required for Session-based Auth)
+# max_age: Cookie lifetime in seconds (7 days = 604800 seconds)
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key="super-secret-brownie-key", 
+    https_only=False,
+    max_age=604800,  # 7 days - makes cookie persistent
+    same_site="lax"  # Allows cookie to be sent on navigation
+)
+
+
+
 active_connections = set()
 simulation_queue = []  # Stores fake points to be sent
+
 is_simulating = False
 hybrid_engine = HybridEngine() # Instantiate Hybrid Engine
 data_cache = []  # Cache for historical data
+
+# --- AUTH STORAGE (In-Memory for Demo) ---
+otp_store = {}  # {email: otp}
+
+def generate_otp():
+    return str(secrets.randbelow(1000000)).zfill(6)
+
+def send_email_mock(email: str, otp: str):
+    print(f"\n[EMAIL SERVICE] To: {email} | Subject: Your Login OTP | Body: {otp}\n")
+    # In a real app, use SMTP or an API here.
+
 
 # Global event for instant wake-up
 update_event = asyncio.Event()
@@ -179,3 +210,60 @@ async def trigger_simulation(req: SimulationRequest):
     update_event.set()
 
     return {"status": "started", "points": len(points)}
+
+# --- AUTH ENDPOINTS ---
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+
+class VerifyRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
+@app.post("/api/auth/login")
+async def login(req: LoginRequest):
+    # 1. Generate OTP
+    otp = generate_otp()
+    
+    # 2. Store it
+    otp_store[req.email] = otp
+    
+    # 3. Send it
+    send_email_mock(req.email, otp)
+    
+    return {"message": "OTP sent to email"}
+
+@app.post("/api/auth/verify")
+async def verify(req: VerifyRequest, request: Request):
+    # 1. Check if OTP matches
+    stored_otp = otp_store.get(req.email)
+    
+    if not stored_otp:
+         raise HTTPException(status_code=400, detail="No OTP request found for this email")
+    
+    if stored_otp != req.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+        
+    # 2. Success! Clear OTP
+    del otp_store[req.email]
+    
+    # 3. Create Session
+    request.session["user"] = req.email
+    
+    return {"message": "Login successful", "user": req.email}
+
+@app.post("/api/auth/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return {"message": "Logged out"}
+
+@app.get("/api/auth/me")
+async def get_current_user(request: Request):
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    # Return user object with id and email (compatible with brownie auth)
+    if isinstance(user, dict):
+        return {"user": user}
+    # Legacy string format (email only)
+    return {"user": {"id": 0, "email": user}}
