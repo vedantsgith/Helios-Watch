@@ -1,0 +1,13 @@
+compiler:
+  solc:
+    version: 0.8.20
+    optimizer:
+      enabled: true
+      runs: 200
+
+networks:
+  default: development
+  development:
+    cmd_settings:
+      gas_limit: 12000000
+      accounts: 10

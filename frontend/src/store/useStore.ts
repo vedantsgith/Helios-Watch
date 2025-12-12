@@ -8,17 +8,24 @@ export interface SolarPoint {
     source: 'noaa' | 'simulation';
 }
 
+export interface User {
+    id: number;
+    email: string;
+}
+
 export interface SystemState {
     dataPoints: SolarPoint[];
     currentFlux: number;
     systemStatus: 'ONLINE' | 'OFFLINE' | 'CONNECTING';
     realHistory: SolarPoint[];
     simulationActive: boolean;
+    user: User | null;
 
     // Actions
     addDataPoint: (point: SolarPoint) => void;
     setSystemStatus: (status: 'ONLINE' | 'OFFLINE' | 'CONNECTING') => void;
     setHistory: (points: SolarPoint[]) => void;
+    setUser: (user: User | null) => void;
 }
 
 // 2. Create the Store
@@ -28,6 +35,9 @@ export const useStore = create<SystemState>((set) => ({
     currentFlux: 0,
     systemStatus: 'OFFLINE',
     simulationActive: false,
+    user: null,
+
+    setUser: (user) => set({ user }),
 
     setHistory: (points) => set({
         realHistory: points,
