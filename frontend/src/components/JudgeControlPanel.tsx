@@ -10,7 +10,7 @@ export const JudgeControlPanel: React.FC = () => {
         setLoading(true);
         try {
             // Matches the backend endpoint we just built
-            await axios.post('http://127.0.0.1:8001/simulate', {
+            await axios.post('http://127.0.0.1:8000/simulate', {
                 type: type,
                 duration: duration
             });

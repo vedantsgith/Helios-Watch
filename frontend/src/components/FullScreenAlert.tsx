@@ -3,10 +3,16 @@ import { useStore } from '../store/useStore';
 import { AlertTriangle } from 'lucide-react';
 
 export const FullScreenAlert: React.FC = () => {
-    const { currentFlux } = useStore();
+    const { currentFlux, visualSimulation } = useStore();
     const [alertLevel, setAlertLevel] = useState<'NONE' | 'M' | 'X'>('NONE');
 
     useEffect(() => {
+        // Priority: Visual Simulation -> Real Data
+        if (visualSimulation.active) {
+            setAlertLevel(visualSimulation.level);
+            return;
+        }
+
         if (currentFlux >= 1e-4) {
             setAlertLevel('X');
         } else if (currentFlux >= 1e-5) {
@@ -14,7 +20,7 @@ export const FullScreenAlert: React.FC = () => {
         } else {
             setAlertLevel('NONE');
         }
-    }, [currentFlux]);
+    }, [currentFlux, visualSimulation]);
 
     if (alertLevel === 'NONE') return null;
 
@@ -31,28 +37,24 @@ export const FullScreenAlert: React.FC = () => {
         );
     }
 
-    // If X-Class, keep the Full Screen Blinding Alert
+    // If X-Class, user requested "Minimal" alert for simulation
+    // We will use a smaller absolute modal instead of full screen takeover
     const color = 'bg-red-500';
     const textColor = 'text-red-100';
-    const title = 'EXTREME ALERT: X-CLASS FLARE';
 
     return (
-        <div className={`fixed inset-0 z-50 pointer-events-none flex flex-col items-center justify-center overflow-hidden`}>
-            {/* 1. Blinding Flash Overlay */}
-            <div className={`absolute inset-0 ${color} mix-blend-overlay animate-[ping_1s_ease-in-out_infinite] opacity-50`}></div>
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+            {/* Pulsing Red Aura */}
+            <div className="absolute inset-0 bg-red-500 blur-xl opacity-20 animate-pulse rounded-full"></div>
 
-            {/* 2. Vignette Pulse */}
-            <div className={`absolute inset-0 bg-[radial-gradient(circle,transparent_0%,#500_90%)] animate-[pulse_0.5s_ease-in-out_infinite]`}></div>
-
-            {/* 3. Central Alert Box */}
-            <div className="relative z-10 bg-black/80 backdrop-blur-xl border-2 border-white/20 p-8 rounded-2xl flex flex-col items-center gap-4 shadow-2xl animate-bounce">
-                <AlertTriangle size={64} className="text-red-500 animate-pulse" />
-                <h1 className={`text-4xl font-black ${textColor} tracking-widest uppercase text-center`}>
-                    {title}
-                </h1>
-                <p className="text-white/60 font-mono">
+            <div className={`glass-card ${color} bg-opacity-20 border-red-500 text-red-100 px-8 py-4 rounded-xl flex flex-col items-center gap-2 backdrop-blur-md shadow-[0_0_30px_rgba(239,68,68,0.4)]`}>
+                <div className="flex items-center gap-3">
+                    <AlertTriangle size={32} className="text-red-500 animate-[spin_1s_ease-in-out_infinite]" />
+                    <span className="font-bold tracking-[0.2em] font-mono text-xl">X-CLASS DETECTED</span>
+                </div>
+                <span className="text-xs opacity-80 font-mono tracking-widest">
                     FLUX: {currentFlux.toExponential(2)} W/m²
-                </p>
+                </span>
             </div>
         </div>
     );

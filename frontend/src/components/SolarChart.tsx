@@ -117,7 +117,7 @@ export const SolarChart: React.FC = () => {
                         isAnimationActive={false}
                         strokeWidth={2}
                         filter="url(#glow)"
-                        activeDot={{ r: 5, strokeWidth: 0, fill: '#fff', className: 'animate-ping' }}
+                        activeDot={{ r: 6, strokeWidth: 0, fill: '#fff', className: 'animate-ping' }}
                     />
                 </AreaChart>
             </ResponsiveContainer>
