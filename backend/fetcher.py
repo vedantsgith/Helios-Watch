@@ -3,13 +3,13 @@ import asyncio
 from datetime import datetime
 from schemas import SolarPoint
 
-# The Official NOAA 6-hour JSON
-NOAA_URL = "https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json"
+# The Official NOAA 3-day JSON (Robust source for full 24h+)
+NOAA_URL = "https://services.swpc.noaa.gov/json/goes/primary/xrays-3-day.json"
 
 async def fetch_noaa_data():
     """
-    Fetches the last 6 hours of X-ray flux data.
-    Returns a list of SolarPoint objects.
+    Fetches X-ray flux data.
+    Returns the last 24 hours of SolarPoint objects.
     """
     async with httpx.AsyncClient() as client:
         try:
@@ -38,8 +38,8 @@ async def fetch_noaa_data():
                     )
                     clean_points.append(point)
             
-            # Return last 6 hours (approx 360 points)
-            return clean_points[-360:]
+            # Return last 24 hours (approx 1440 minutes)
+            return clean_points[-1440:]
             
         except Exception as e:
             print(f"[ERROR] NOAA Fetch Failed: {e}")
@@ -119,10 +119,94 @@ async def fetch_solar_regions():
             
     return regions
 
+# Fetch Historical Telemetry (Wind, Kp, Proton) for Graph Initialization
+async def fetch_telemetry_history():
+    """
+    Fetches the last 24 hours of Solar Wind, Kp Index, and Proton Flux.
+    Returns: { "wind": [...], "kp": [...], "proton": [...] }
+    """
+    history = {"wind": [], "kp": [], "proton": []}
+    
+    async with httpx.AsyncClient() as client:
+        # 1. Solar Wind History (24 Hours)
+        # URL: https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json
+        try:
+            r = await client.get("https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json", timeout=4.0)
+            if r.status_code == 200:
+                data = r.json() # List of lists: [time, density, speed, temp]
+                # Skip header
+                start_idx = 1 if isinstance(data[0][0], str) and "time" in data[0][0].lower() else 0
+                
+                for entry in data[start_idx:]:
+                    # entry: [time_tag, density, speed, temp]
+                    try:
+                        if entry[2]: 
+                            history["wind"].append({
+                                "timestamp": entry[0],
+                                "value": float(entry[2])
+                            })
+                    except: continue
+        except Exception as e:
+            print(f"[WARN] Wind History Fetch: {e}")
+
+        # 2. Kp Index History
+        try:
+            r = await client.get("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json", timeout=3.0)
+            if r.status_code == 200:
+                data = r.json() 
+                # Gemini said "Array of Objects" but existing code and standard NOAA JSON often use "Array of Arrays" for products.
+                # We will handle both just in case.
+                
+                is_dict = isinstance(data[0], dict) if data else False
+                start_idx = 1 if not is_dict and isinstance(data[0][0], str) and "time" in data[0][0].lower() else 0
+
+                for entry in data[start_idx:]:
+                    try:
+                        if is_dict:
+                            # Object format
+                            ts = entry.get("time_tag")
+                            val = float(entry.get("Kp", 0))
+                        else:
+                            # List format: [time, kp, ...]
+                            ts = entry[0]
+                            val = float(entry[1])
+                            
+                        history["kp"].append({
+                            "timestamp": ts,
+                            "value": val
+                        })
+                    except: continue
+        except Exception as e:
+            print(f"[WARN] Kp History Fetch: {e}")
+
+        # 3. Proton Flux History (24 Hours)
+        # URL: https://services.swpc.noaa.gov/json/goes/primary/integral-protons-1-day.json
+        try:
+            r = await client.get("https://services.swpc.noaa.gov/json/goes/primary/integral-protons-1-day.json", timeout=4.0)
+            if r.status_code == 200:
+                data = r.json() # Array of Objects
+                
+                for entry in data:
+                    # Filter for >=10 MeV
+                    if entry.get('energy') == '>=10 MeV':
+                        try:
+                            history["proton"].append({
+                                "timestamp": entry['time_tag'],
+                                "value": float(entry['flux'])
+                            })
+                        except: continue
+        except Exception as e:
+            print(f"[WARN] Proton History Fetch: {e}")
+            
+    return history
+
 if __name__ == "__main__":
     # Quick Test
     points = asyncio.run(fetch_noaa_data())
     print(f"Fetched {len(points)} valid points.")
-    if points:
-        print(f"Latest: {points[-1]}")
+    
+    hist = asyncio.run(fetch_telemetry_history())
+    print(f"Wind History: {len(hist['wind'])} points")
+    print(f"Kp History: {len(hist['kp'])} points")
+    print(f"Proton History: {len(hist['proton'])} points")
         
