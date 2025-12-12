@@ -28,7 +28,14 @@ app.add_middleware(
 )
 
 # Session Middleware (Required for Session-based Auth)
-app.add_middleware(SessionMiddleware, secret_key="super-secret-brownie-key", https_only=False)
+# max_age: Cookie lifetime in seconds (7 days = 604800 seconds)
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key="super-secret-brownie-key", 
+    https_only=False,
+    max_age=604800,  # 7 days - makes cookie persistent
+    same_site="lax"  # Allows cookie to be sent on navigation
+)
 
 
 

@@ -53,7 +53,7 @@ export function Dashboard() {
     };
 
     return (
-        <div className="min-h-screen text-white p-4 lg:p-8 relative overflow-hidden font-sans">
+        <div className="min-h-screen bg-black text-white p-4 lg:p-8 relative overflow-hidden font-sans">
             {/* BACKGROUND & EFFECTS */}
             <div className="solar-bg"></div>
             <div className="scanlines"></div>

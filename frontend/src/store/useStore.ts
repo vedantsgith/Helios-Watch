@@ -8,11 +8,6 @@ export interface SolarPoint {
     source: 'noaa' | 'simulation';
 }
 
-<<<<<<< HEAD
-export interface User {
-    id: number;
-    email: string;
-=======
 export interface SpaceWeather {
     windSpeed: number;
     temp: number;
@@ -35,7 +30,11 @@ export interface CalculusData {
     status: string;      // Hybrid Status (e.g., RAPID_INTENSIFICATION)
     details: string;     // Context
     engine_type: string; // "HYBRID"
->>>>>>> 49b2004260d5caa71b043e1ecaaf4d8cb013a95c
+}
+
+export interface User {
+    id: number;
+    email: string;
 }
 
 export interface SystemState {
@@ -44,12 +43,10 @@ export interface SystemState {
     systemStatus: 'ONLINE' | 'OFFLINE' | 'CONNECTING';
     realHistory: SolarPoint[];
     simulationActive: boolean;
-<<<<<<< HEAD
-    user: User | null;
-=======
     spaceWeather: SpaceWeather;
     activeRegions: ActiveRegion[]; // New State
     calculus: CalculusData;        // New State
+    user: User | null;
 
     // Simulation State (Visual Only, does not affect Data/Graphs)
     visualSimulation: {
@@ -57,19 +54,15 @@ export interface SystemState {
         level: 'NONE' | 'M' | 'X';
     };
     setVisualSimulation: (active: boolean, level?: 'NONE' | 'M' | 'X') => void;
->>>>>>> 49b2004260d5caa71b043e1ecaaf4d8cb013a95c
 
     // Actions
     addDataPoint: (point: SolarPoint) => void;
     setSystemStatus: (status: 'ONLINE' | 'OFFLINE' | 'CONNECTING') => void;
     setHistory: (points: SolarPoint[]) => void;
-<<<<<<< HEAD
-    setUser: (user: User | null) => void;
-=======
     setSpaceWeather: (data: SpaceWeather) => void;
     setRegions: (regions: ActiveRegion[]) => void;
     setCalculus: (data: CalculusData) => void;
->>>>>>> 49b2004260d5caa71b043e1ecaaf4d8cb013a95c
+    setUser: (user: User | null) => void;
 }
 
 // 2. Create the Store
@@ -77,13 +70,6 @@ export const useStore = create<SystemState>((set) => ({
     dataPoints: [],
     realHistory: [],
     currentFlux: 0,
-<<<<<<< HEAD
-    systemStatus: 'OFFLINE',
-    simulationActive: false,
-    user: null,
-
-    setUser: (user) => set({ user }),
-=======
     systemStatus: 'CONNECTING',
     simulationActive: false, // Legacy fallback
     spaceWeather: {
@@ -96,8 +82,10 @@ export const useStore = create<SystemState>((set) => ({
     activeRegions: [],
     calculus: { slope: 0, is_warning: false, threshold: 1e-7, status: 'STABLE', details: 'System Normal', engine_type: 'Loading...' },
     visualSimulation: { active: false, level: 'NONE' },
+    user: null,
+    
+    setUser: (user) => set({ user }),
     setVisualSimulation: () => { }, // No-op for now as we reverted sim features
->>>>>>> 49b2004260d5caa71b043e1ecaaf4d8cb013a95c
 
     setHistory: (points) => set({
         realHistory: points,
