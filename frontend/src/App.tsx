@@ -16,7 +16,7 @@ import React from 'react';
 
 // Configure Axios
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8001',
+  baseURL: 'http://127.0.0.1:8000',
   withCredentials: true
 });
 
@@ -31,12 +31,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
 };
 
 function Dashboard() {
-  const { addDataPoint, systemStatus, setSystemStatus, currentFlux, user, setUser } = useStore();
+  const { addDataPoint, systemStatus, setSystemStatus, currentFlux, spaceWeather, user, setUser } = useStore();
   const [currentView, setCurrentView] = useState<'live' | 'history' | 'physics'>('live');
 
   useEffect(() => {
     // CONNECT TO WEBSOCKET
-    const ws = new WebSocket('ws://127.0.0.1:8001/ws');
+    const ws = new WebSocket('ws://127.0.0.1:8000/ws');
 
     ws.onopen = () => setSystemStatus('ONLINE');
     ws.onclose = () => setSystemStatus('OFFLINE');
@@ -44,21 +44,29 @@ function Dashboard() {
     ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
+        if (message.type === 'telemetry_update') {
+          console.log("WS DEBUG: RECVD TELEMETRY", message);
+        }
         if (message.type === 'data_update') {
           addDataPoint(message.payload);
         } else if (message.type === 'history_update') {
-          // message.payload.history is the array
           useStore.getState().setHistory(message.payload.history);
         } else if (message.type === 'telemetry_update') {
+          // Check if it's simulation data (passed via payload type usually, or inferred)
+          const isSim = message.payload.type === 'telemetry_sim';
+          console.log("WS DEBUG: RECVD TELEMETRY", message, "SIM:", isSim);
+
           useStore.getState().setSpaceWeather({
             windSpeed: message.payload.wind_speed,
             temp: message.payload.temp,
             density: message.payload.density,
             kpIndex: message.payload.kp_index,
             protonFlux: message.payload.proton_flux
-          });
+          }, isSim);
         } else if (message.type === 'calculus_update') {
           useStore.getState().setCalculus(message.payload);
+        } else if (message.type === 'telemetry_history_update') {
+          useStore.getState().setTelemetryHistory(message.payload);
         }
       } catch (e) {
         console.error("WS Parse Error", e);
@@ -158,14 +166,35 @@ function Dashboard() {
                 </div>
                 <div className="glass-card p-6 flex flex-col justify-center">
                   <p className="text-gray-500 text-xs uppercase mb-1">Forecast</p>
-                  <p className={`text-3xl font-bold ${currentFlux > 1e-4 ? 'text-red-500 animate-pulse drop-shadow-[0_0_10px_red]' :
-                    currentFlux > 1e-5 ? 'text-orange-400' :
-                      'text-green-400'
-                    }`}>
-                    {currentFlux > 1e-4 ? 'STORM' :
-                      currentFlux > 1e-5 ? 'ACTIVE' :
-                        'STABLE'}
-                  </p>
+                  {/* MULTI-METRIC FORECAST LOGIC */}
+                  {/* MULTI-METRIC FORECAST LOGIC (SEVERITY PRIORITY) */}
+                  {(() => {
+                    const wind = spaceWeather.windSpeed || 0;
+                    const kp = spaceWeather.kpIndex || 0;
+                    const proton = spaceWeather.protonFlux || 0;
+                    const flux = currentFlux;
+
+                    // Severity Levels: 0 (Normal), 1 (Elevated), 2 (Warning), 3 (Critical), 4 (Extreme)
+                    const checks = [
+                      { id: 'flux', val: flux, label: 'X-CLASS STORM', score: flux >= 1e-4 ? 4 : flux >= 1e-5 ? 2 : 0, color: 'text-red-500 animate-pulse' },
+                      { id: 'wind', val: wind, label: `WIND ${wind.toFixed(0)}`, score: wind >= 900 ? 4 : wind >= 700 ? 3 : wind >= 500 ? 2 : 0, color: wind >= 900 ? 'text-purple-500 animate-pulse' : wind >= 700 ? 'text-red-500' : 'text-yellow-400' },
+                      { id: 'kp', val: kp, label: `Kp ${kp.toFixed(1)} ${kp >= 8 ? 'EXTREME' : kp >= 6 ? 'STORM' : ''}`, score: kp >= 8 ? 4 : kp >= 6 ? 3 : kp >= 5 ? 2 : 0, color: kp >= 8 ? 'text-purple-500 animate-pulse' : kp >= 6 ? 'text-red-500' : 'text-yellow-400' },
+                      { id: 'proton', val: proton, label: `PROTON ${proton >= 1000 ? 'S3' : proton >= 100 ? 'S2' : 'S1'}`, score: proton >= 1000 ? 4 : proton >= 100 ? 3 : proton >= 10 ? 2 : 0, color: proton >= 1000 ? 'text-purple-500 animate-pulse' : proton >= 100 ? 'text-red-500' : 'text-yellow-400' }
+                    ];
+
+                    // Sort by Score Descending
+                    const highest = checks.sort((a, b) => b.score - a.score)[0];
+
+                    if (highest.score >= 2) {
+                      // Special Handling for M-Class (Score 2) vs others
+                      if (highest.id === 'flux' && highest.score === 2) {
+                        return <p className="text-3xl font-bold text-orange-400">M-CLASS ACTIVE</p>;
+                      }
+                      return <p className={`text-3xl font-bold ${highest.color}`}>{highest.label}</p>;
+                    }
+
+                    return <p className="text-3xl font-bold text-green-400">STABLE</p>;
+                  })()}
                 </div>
               </div>
             </div>
@@ -174,7 +203,7 @@ function Dashboard() {
             <div className="lg:col-span-4 flex flex-col gap-6">
 
               {/* 3D Globe Card */}
-              <div className="relative min-h-[350px] flex items-center justify-center [mask-image:radial-gradient(circle,black_50%,transparent_100%)]">
+              <div className="relative min-h-[550px] flex items-center justify-center [mask-image:radial-gradient(circle,black_50%,transparent_100%)]">
                 <div className="absolute top-0 left-0 z-10 flex items-center gap-2 bg-black/30 backdrop-blur px-3 py-1 rounded-full border border-white/10">
                   <Globe size={14} className="text-blue-400" />
                   <span className="text-[10px] font-bold text-blue-100/80 tracking-widest">IONOSPHERE VIEW</span>

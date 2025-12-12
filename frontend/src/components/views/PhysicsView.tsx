@@ -3,16 +3,82 @@ import { SolarGlobe } from '../SolarGlobe';
 import { Wind, Zap, Activity } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
+// --- THREAT LOGIC ---
+const getStatusColor = (type: 'wind' | 'kp' | 'proton' | 'flux' | 'neutral', value: number) => {
+    // Neutral types (like Density/Temp) logic handled in StatBox defaults, but safe fallback here
+    if (type === 'neutral') return { color: 'text-blue-400', bg: 'bg-blue-950/30', border: 'border-blue-500/10', status: '', pulse: false };
+
+    switch (type) {
+        case 'wind':
+            if (value >= 900) return { color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/50', status: 'EXTREME', pulse: true };
+            if (value >= 700) return { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/50', status: 'CRITICAL', pulse: true };
+            if (value >= 500) return { color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/50', status: 'WARNING', pulse: false };
+            return { color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', status: 'NORMAL', pulse: false };
+
+        case 'kp':
+            if (value >= 8) return { color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/50', status: 'EXTREME G4', pulse: true };
+            if (value >= 6) return { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/50', status: 'STORM G2', pulse: true };
+            if (value >= 5) return { color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/50', status: 'UNSETTLED', pulse: false };
+            return { color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', status: 'QUIET', pulse: false };
+
+        case 'proton':
+            if (value >= 1000) return { color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/50', status: 'S3 STRONG', pulse: true };
+            if (value >= 100) return { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/50', status: 'S2 MODERATE', pulse: true };
+            if (value >= 10) return { color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/50', status: 'S1 MINOR', pulse: false };
+            return { color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', status: 'NORMAL', pulse: false };
+
+        case 'flux':
+            if (value >= 1e-4) return { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/50', status: 'X-CLASS', pulse: true };
+            if (value >= 1e-5) return { color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/50', status: 'M-CLASS', pulse: false };
+            if (value >= 1e-6) return { color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/50', status: 'C-CLASS', pulse: false };
+            return { color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', status: 'QUIET', pulse: false };
+
+        default:
+            return { color: 'text-gray-500', bg: 'bg-gray-500/10', border: 'border-gray-500/20', status: 'UNKNOWN', pulse: false };
+    }
+};
+
+interface StatBoxProps {
+    label: string;
+    value: number | string;
+    unit: string;
+    type: 'wind' | 'kp' | 'proton' | 'flux' | 'neutral';
+}
+
+const StatBox: React.FC<StatBoxProps> = ({ label, value, unit, type }) => {
+    // For 'neutral' types (like Density/Temp), defaults to Blue style
+    const style = type === 'neutral'
+        ? { color: 'text-blue-400', bg: 'bg-blue-950/30', border: 'border-blue-500/10', status: '', pulse: false }
+        : getStatusColor(type, typeof value === 'number' ? value : 0);
+
+    return (
+        <div className={`${style.bg} p-4 rounded border ${style.border} transition-all duration-500`}>
+            <div className="flex justify-between items-center mb-1">
+                <p className={`text-[10px] uppercase tracking-wider ${style.color}`}>{label}</p>
+                {style.status && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/40 ${style.color} ${style.pulse ? 'animate-pulse' : ''}`}>
+                        {style.status}
+                    </span>
+                )}
+            </div>
+            <div className={`text-2xl font-mono font-bold text-white flex items-baseline gap-2 ${style.pulse ? 'animate-pulse' : ''}`}>
+                {value} <span className="text-xs text-gray-400 font-normal">{unit}</span>
+            </div>
+        </div>
+    );
+};
+
 export const PhysicsView: React.FC = () => {
     // Reverted to simple view (no simulation triggers, static/store data without cinematic mode)
-    const { spaceWeather, activeRegions, calculus } = useStore();
+    const { spaceWeather, activeRegions, calculus, currentFlux } = useStore();
 
     // Use store values (or defaults if 0/loading)
     const telemetry = {
         windSpeed: spaceWeather.windSpeed || 450,
         density: spaceWeather.density || 5.2,
         kpIndex: spaceWeather.kpIndex || 3,
-        temperature: spaceWeather.temp || 150000
+        temperature: spaceWeather.temp || 150000,
+        protonFlux: spaceWeather.protonFlux || 0.1
     };
 
     // Calculate Active Region Probabilities based on real data
@@ -127,35 +193,55 @@ export const PhysicsView: React.FC = () => {
                         </h2>
                         <span className="text-[10px] text-gray-500 font-mono">NOAA/SWPC</span>
                     </div>
-                    <div className="p-6 grid grid-cols-1 gap-4">
-                        {/* Wind Speed */}
-                        <div className="bg-blue-950/30 p-4 rounded border border-blue-500/10">
-                            <p className="text-[10px] text-blue-400 uppercase tracking-wider mb-1">Wind Speed</p>
-                            <div className="text-2xl font-mono font-bold text-white">
-                                {telemetry.windSpeed.toFixed(0)} <span className="text-xs text-gray-500">km/s</span>
-                            </div>
-                        </div>
-                        {/* Density */}
-                        <div className="bg-purple-950/30 p-4 rounded border border-purple-500/10">
-                            <p className="text-[10px] text-purple-400 uppercase tracking-wider mb-1">Proton Density</p>
-                            <div className="text-2xl font-mono font-bold text-white">
-                                {telemetry.density.toFixed(1)} <span className="text-xs text-gray-500">p/cm³</span>
-                            </div>
-                        </div>
-                        {/* Kp Index */}
-                        <div className="bg-green-950/30 p-4 rounded border border-green-500/10">
-                            <p className="text-[10px] text-green-400 uppercase tracking-wider mb-1">K-Index</p>
-                            <div className="text-2xl font-mono font-bold text-white">
-                                {telemetry.kpIndex.toFixed(1)} <span className="text-xs text-gray-500">Kp</span>
-                            </div>
-                        </div>
-                        {/* Temp */}
-                        <div className="bg-yellow-950/30 p-4 rounded border border-yellow-500/10">
-                            <p className="text-[10px] text-yellow-400 uppercase tracking-wider mb-1">Ion Temp</p>
-                            <div className="text-2xl font-mono font-bold text-white">
-                                {(telemetry.temperature / 1000).toFixed(0)}k <span className="text-xs text-gray-500">K</span>
-                            </div>
-                        </div>
+                    <div className="p-6 grid grid-cols-1 gap-4 overflow-y-auto max-h-[600px] custom-scrollbar">
+
+                        {/* 0. X-Ray Flux (Added by Request) */}
+                        <StatBox
+                            label="X-Ray Flux"
+                            value={currentFlux.toExponential(2)}
+                            unit="W/m²"
+                            type="flux"
+                        />
+
+                        {/* 1. Solar Wind Speed (Dynamic) */}
+                        <StatBox
+                            label="Wind Velocity"
+                            value={telemetry.windSpeed.toFixed(0)}
+                            unit="km/s"
+                            type="wind"
+                        />
+
+                        {/* 2. Kp Index (Dynamic) */}
+                        <StatBox
+                            label="Geomagnetic Kp"
+                            value={telemetry.kpIndex.toFixed(1)}
+                            unit="Index"
+                            type="kp"
+                        />
+
+                        {/* 3. Proton Flux (Dynamic) */}
+                        <StatBox
+                            label="Proton Flux (>10MeV)"
+                            value={telemetry.protonFlux.toExponential(1)}
+                            unit="pfu"
+                            type="proton"
+                        />
+
+                        {/* 4. Density (Neutral) */}
+                        <StatBox
+                            label="Plasma Density"
+                            value={telemetry.density.toFixed(1)}
+                            unit="p/cm³"
+                            type="neutral"
+                        />
+
+                        {/* 5. Temperature (Neutral) */}
+                        <StatBox
+                            label="Ion Temperature"
+                            value={(telemetry.temperature / 1000).toFixed(0) + 'k'}
+                            unit="Kelvin"
+                            type="neutral"
+                        />
                     </div>
                 </div>
 

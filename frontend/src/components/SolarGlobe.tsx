@@ -4,6 +4,20 @@ import { useStore } from '../store/useStore';
 
 export const SolarGlobe: React.FC = () => {
     const globeEl = useRef<any>(null);
+    const [dimensions, setDimensions] = React.useState({ w: 500, h: 500 });
+
+    useEffect(() => {
+        const handleResize = () => {
+            // "Fit" logic: occupy available space but don't overflow
+            // Since it's in a flexible grid, we can base it on window width somewhat
+            // Or just set a larger sensible default for desktop
+            const width = window.innerWidth < 1024 ? 300 : 600;
+            setDimensions({ w: width, h: width });
+        };
+        window.addEventListener('resize', handleResize);
+        handleResize();
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         // Auto-rotate
@@ -57,8 +71,8 @@ export const SolarGlobe: React.FC = () => {
             <div className="absolute inset-0 bg-orange-500/10 blur-[100px] rounded-full z-0 pointer-events-none"></div>
             <Globe
                 ref={globeEl}
-                width={500}
-                height={500}
+                width={dimensions.w}
+                height={dimensions.h}
                 globeImageUrl="/sun_8k.jpg"
                 backgroundColor="rgba(0,0,0,0)"
                 atmosphereColor="#ffaa00"

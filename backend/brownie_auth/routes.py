@@ -17,7 +17,11 @@ from dotenv import load_dotenv
 from models import get_db, save_otp_to_user, verify_otp, User
 
 # Load environment variables from .env file
-load_dotenv()
+from pathlib import Path
+env_path = Path(__file__).resolve().parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
+print(f"DEBUG: Loading .env from {env_path}")
+print(f"DEBUG: Loaded EMAIL_USER: {os.getenv('EMAIL_USER')}")
 
 # Initialize FastAPI Router
 router = APIRouter(
@@ -58,6 +62,7 @@ def send_otp_email(email: str, otp_code: str) -> dict:
         dict: {'success': bool, 'message': str}
     """
     # FALLBACK: Print OTP to console if email credentials not configured
+    print(f"DEBUG: EMAIL_USER='{EMAIL_USER}', EMAIL_PASS set={'Yes' if EMAIL_PASS else 'No'}")
     if not EMAIL_USER or not EMAIL_PASS:
         print(f"\n{'='*60}")
         print(f"📧 OTP EMAIL (Console Mode - No SMTP Configured)")
