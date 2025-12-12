@@ -17,7 +17,22 @@ class Alert(BaseModel):
     message: str         # e.g., "Strong Radio Blackout Risk"
     is_active: bool
 
-# 3. The WebSocket Packet (What frontend receives)
 class WSMessage(BaseModel):
-    type: str            # "heartbeat", "data_update", "alert"
+    type: str            # "heartbeat", "data_update", "alert", "telemetry_update"
     payload: dict
+
+# 4. Space Weather Telemetry (New)
+class Telemetry(BaseModel):
+    wind_speed: float    # km/s
+    temp: float          # Kelvin
+    density: float       # p/cm^3
+    kp_index: float      # 0-9
+    proton_flux: float   # pfu
+
+# 5. Active Regions (Sunspots)
+class ActiveRegion(BaseModel):
+    region_number: int
+    latitude: float
+    longitude: float
+    class_type: str      # e.g. "Beta-Gamma"
+

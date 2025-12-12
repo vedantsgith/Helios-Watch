@@ -1,14 +1,15 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 import asyncio
 import json
+import secrets
 from datetime import datetime
 from schemas import WSMessage
 from fetcher import fetch_noaa_data
 from simulator import generate_flare
+from derivative_engine import HybridEngine  # NEW: Hybrid Layer
 from pydantic import BaseModel, EmailStr
-from starlette.middleware.sessions import SessionMiddleware
-import secrets
 from brownie_auth.routes import router as brownie_router
 
 # THIS IS THE MISSING LINE CAUSING YOUR ERROR
@@ -35,6 +36,8 @@ active_connections = set()
 simulation_queue = []  # Stores fake points to be sent
 
 is_simulating = False
+hybrid_engine = HybridEngine() # Instantiate Hybrid Engine
+data_cache = []  # Cache for historical data
 
 # --- AUTH STORAGE (In-Memory for Demo) ---
 otp_store = {}  # {email: otp}
@@ -56,11 +59,12 @@ async def health_check():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
+    await websocket.accept() # CRITICAL: MUST BE FIRST
+    print(f"WebSocket connected: {websocket.client}")
     active_connections.add(websocket)
-    
-    # Send Initial 6-Hour History
+
     try:
+        # Send Initial 6-Hour History
         points = await fetch_noaa_data()
         if points:
             # We send a special 'history_update'
@@ -69,6 +73,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 payload={"history": [p.model_dump() for p in points]}
             )
             await websocket.send_text(msg.json())
+            
+            # --- HYBRID LAYER (Immediate Update) ---
+            # Send initial calculus data so UI doesn't say "Loading..."
+            calc_data = hybrid_engine.analyze(points)
+            msg_calc = WSMessage(type="calculus_update", payload=calc_data)
+            await websocket.send_text(msg_calc.json())
     except Exception as e:
         print(f"Error sending initial data: {e}")
 
@@ -79,7 +89,7 @@ async def websocket_endpoint(websocket: WebSocket):
         active_connections.remove(websocket)
 
 async def heartbeat():
-    global is_simulating, simulation_queue, update_event
+    global is_simulating, simulation_queue, update_event, data_cache
 
     while True:
         if active_connections:
@@ -103,15 +113,47 @@ async def heartbeat():
 
             # MODE 2: LIVE NOAA
             elif not is_simulating:
+                # 1. Fetch Flux Chart Data
                 points = await fetch_noaa_data()
                 if points:
+                    # Update cache
+                    data_cache = points
                     latest = points[-1]
                     msg = WSMessage(type="data_update", payload=latest.model_dump())
+                    
+                    # --- HYBRID LAYER ---
+                    # Calculate dFlux/dt + Thresholds
+                    calc_data = hybrid_engine.analyze(points)
+                    msg_calc = WSMessage(type="calculus_update", payload=calc_data)
+                    
                     for connection in list(active_connections):
                         try:
                             await connection.send_text(msg.json())
+                            await connection.send_text(msg_calc.json())
                         except:
                             active_connections.remove(connection)
+
+                # 2. Fetch Detailed Telemetry (Physics View)
+                from fetcher import fetch_telemetry, fetch_solar_regions
+                
+                # Parallel Fetch
+                telemetry_data, active_regions = await asyncio.gather(
+                    fetch_telemetry(),
+                    fetch_solar_regions()
+                )
+                
+                # Send Telemetry
+                msg_telemetry = WSMessage(type="telemetry_update", payload=telemetry_data)
+                
+                # Send Regions
+                msg_regions = WSMessage(type="regions_update", payload={"regions": active_regions})
+
+                for connection in list(active_connections):
+                    try:
+                        await connection.send_text(msg_telemetry.json())
+                        await connection.send_text(msg_regions.json())
+                    except:
+                        pass
 
                 # Wait 60 seconds OR until an event is set (instant wake-up)
                 try:
