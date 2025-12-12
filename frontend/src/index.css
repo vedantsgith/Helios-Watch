@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-dark: #0a0a0a;
+  --glow-orange: rgba(255, 100, 0, 0.15);
+}
+
+/* The Pulsing Background Animation */
+@keyframes sun-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+
+.solar-bg {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 150vh;
+  height: 150vh;
+  /* Make it HUGE */
+  z-index: -10;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ff5500 0%, #ff5500 20%, #a03000 60%, transparent 80%);
+  filter: blur(80px);
+  /* Soften edges */
+  animation: sun-pulse 8s infinite ease-in-out;
+  pointer-events: none;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: white;
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* --- VISUAL UPGRADES --- */
+
+/* 1. Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-mono {
+  font-family: 'Rajdhani', sans-serif !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* 2. Glassmorphism Card Utility */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  border-radius: 1rem;
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 15px rgba(255, 100, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+/* 3. CRT Scanline Overlay */
+.scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0) 50%,
+      rgba(0, 0, 0, 0.1) 50%,
+      rgba(0, 0, 0, 0.1));
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.3;
+}
+
+/* Vignette */
+.vignette {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle, transparent 50%, rgba(0, 0, 0, 0.8) 120%);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* Scrollbar Polish */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
