@@ -14,14 +14,12 @@ import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
+from pathlib import Path
 from models import get_db, save_otp_to_user, verify_otp, User
 
 # Load environment variables from .env file
-from pathlib import Path
 env_path = Path(__file__).resolve().parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
-print(f"DEBUG: Loading .env from {env_path}")
-print(f"DEBUG: Loaded EMAIL_USER: {os.getenv('EMAIL_USER')}")
 
 # Initialize FastAPI Router
 router = APIRouter(
@@ -48,6 +46,10 @@ GMAIL_SMTP_SERVER = "smtp.gmail.com"
 GMAIL_SMTP_PORT = 465
 EMAIL_USER = os.getenv("EMAIL_USER", "")
 EMAIL_PASS = os.getenv("EMAIL_PASS", "")
+
+# Debug: Print loaded credentials (mask password)
+print(f"[EMAIL CONFIG] EMAIL_USER: {EMAIL_USER}")
+print(f"[EMAIL CONFIG] EMAIL_PASS: {'*' * len(EMAIL_PASS) if EMAIL_PASS else 'NOT SET'}")
 
 
 def send_otp_email(email: str, otp_code: str) -> dict:

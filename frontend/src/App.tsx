@@ -16,7 +16,7 @@ import React from 'react';
 
 // Configure Axios
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000',
+  baseURL: 'http://127.0.0.1:8001',
   withCredentials: true
 });
 
@@ -36,7 +36,7 @@ function Dashboard() {
 
   useEffect(() => {
     // CONNECT TO WEBSOCKET
-    const ws = new WebSocket('ws://127.0.0.1:8000/ws');
+    const ws = new WebSocket('ws://127.0.0.1:8001/ws');
 
     ws.onopen = () => setSystemStatus('ONLINE');
     ws.onclose = () => setSystemStatus('OFFLINE');

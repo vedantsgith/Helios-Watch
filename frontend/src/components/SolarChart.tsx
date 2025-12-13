@@ -12,13 +12,13 @@ export const SolarChart: React.FC = () => {
     const mode = activeGraphTab;
 
     // Internal State
-    const [dataWindow, setDataWindow] = useState<number>(1440); // Default 24h (minutes)
+    const [dataWindow, setDataWindow] = useState<number>(360); // Default 6h (minutes)
 
     const handleZoom = (direction: 'in' | 'out' | 'reset') => {
         const levels = [60, 180, 360, 720, 1440]; // 1h, 3h, 6h, 12h, 24h
         const currentIndex = levels.indexOf(dataWindow);
 
-        if (direction === 'reset') setDataWindow(1440);
+        if (direction === 'reset') setDataWindow(360); // Reset to 6h
         else if (direction === 'in' && currentIndex > 0) setDataWindow(levels[currentIndex - 1]);
         else if (direction === 'out' && currentIndex < levels.length - 1) setDataWindow(levels[currentIndex + 1]);
     };
