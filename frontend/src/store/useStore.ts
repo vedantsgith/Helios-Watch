@@ -118,7 +118,7 @@ export const useStore = create<SystemState>((set) => ({
     setHistory: (points) => set({
         realHistory: points,
         // Initialize graph with this history (or a subset)
-        dataPoints: points.slice(-1440), // Show last 24 hours (1440 mins)
+        dataPoints: points.slice(-4500), // Show last 3 days (4500 mins)
         currentFlux: points.length > 0 ? points[points.length - 1].flux : 0
     }),
 
@@ -128,7 +128,7 @@ export const useStore = create<SystemState>((set) => ({
         // 1. Simulation Data: Update Graph & Flux ONLY (Visuals)
         // deliberately EXCLUDE from realHistory to keep live data pure.
         if (isSim) {
-            const newDataPoints = [...state.dataPoints, point].slice(-1440);
+            const newDataPoints = [...state.dataPoints, point].slice(-4500);
             return {
                 dataPoints: newDataPoints,
                 currentFlux: point.flux,
@@ -137,7 +137,7 @@ export const useStore = create<SystemState>((set) => ({
         }
 
         // 2. Real Data: Update History & Display
-        const newRealHistory = [...state.realHistory, point].slice(-1440); // Keep 24 hours
+        const newRealHistory = [...state.realHistory, point].slice(-4500); // Keep 3 days
 
         // SAFETY: When real data arrives, we strictly reset the view to the Real History.
         // This ensures that any previous simulation data is immediately wiped from the graph,

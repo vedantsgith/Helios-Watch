@@ -38,8 +38,8 @@ async def fetch_noaa_data():
                     )
                     clean_points.append(point)
             
-            # Return last 24 hours (approx 1440 minutes)
-            return clean_points[-1440:]
+            # Return FULL history (approx 3 days / 4320 points)
+            return clean_points
             
         except Exception as e:
             print(f"[ERROR] NOAA Fetch Failed: {e}")
@@ -106,8 +106,9 @@ async def fetch_solar_regions():
             if r.status_code == 200:
                 data = r.json()
                 for entry in data:
-                    # Only take regions with valid location
-                    if entry.get('latitude') and entry.get('longitude'):
+                    # Only take regions that are officially NAMED (Active Regions)
+                    # This filters out hundreds of small "plages" or unnamed spots (noise)
+                    if entry.get('observed_region_number'):
                         regions.append({
                             "region_number": entry.get('observed_region_number'),
                             "latitude": float(entry.get('latitude')),
@@ -128,10 +129,10 @@ async def fetch_telemetry_history():
     history = {"wind": [], "kp": [], "proton": []}
     
     async with httpx.AsyncClient() as client:
-        # 1. Solar Wind History (24 Hours)
-        # URL: https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json
+        # 1. Solar Wind History (3 DAYS)
+        # URL: https://services.swpc.noaa.gov/products/solar-wind/plasma-3-day.json
         try:
-            r = await client.get("https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json", timeout=4.0)
+            r = await client.get("https://services.swpc.noaa.gov/products/solar-wind/plasma-3-day.json", timeout=6.0)
             if r.status_code == 200:
                 data = r.json() # List of lists: [time, density, speed, temp]
                 # Skip header
@@ -149,9 +150,9 @@ async def fetch_telemetry_history():
         except Exception as e:
             print(f"[WARN] Wind History Fetch: {e}")
 
-        # 2. Kp Index History
+        # 2. Kp Index History (7 DAYS)
         try:
-            r = await client.get("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json", timeout=3.0)
+            r = await client.get("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json", timeout=4.0)
             if r.status_code == 200:
                 data = r.json() 
                 # Gemini said "Array of Objects" but existing code and standard NOAA JSON often use "Array of Arrays" for products.
@@ -179,10 +180,10 @@ async def fetch_telemetry_history():
         except Exception as e:
             print(f"[WARN] Kp History Fetch: {e}")
 
-        # 3. Proton Flux History (24 Hours)
-        # URL: https://services.swpc.noaa.gov/json/goes/primary/integral-protons-1-day.json
+        # 3. Proton Flux History (3 DAYS)
+        # URL: https://services.swpc.noaa.gov/json/goes/primary/integral-protons-3-day.json
         try:
-            r = await client.get("https://services.swpc.noaa.gov/json/goes/primary/integral-protons-1-day.json", timeout=4.0)
+            r = await client.get("https://services.swpc.noaa.gov/json/goes/primary/integral-protons-3-day.json", timeout=6.0)
             if r.status_code == 200:
                 data = r.json() # Array of Objects
                 

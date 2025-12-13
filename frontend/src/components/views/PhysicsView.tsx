@@ -82,7 +82,7 @@ export const PhysicsView: React.FC = () => {
     };
 
     // Calculate Active Region Probabilities based on real data
-    const hasActiveRegions = activeRegions.length > 0;
+    // const hasActiveRegions = activeRegions.length > 0; (Removed unused)
 
     // Logic for Calculus Display
     const slopeScientific = calculus.slope ? calculus.slope.toExponential(1) : "0.0e+0";
@@ -95,66 +95,82 @@ export const PhysicsView: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-8">
 
                 {/* LEFT: SOLAR INTELLIGENCE */}
-                <div className="glass-card p-0 overflow-hidden flex flex-col h-full border-r-4 border-r-orange-500/50 border-l-0">
-                    <div className="p-4 bg-white/5 border-b border-white/5 flex justify-between items-center">
-                        <h2 className="text-sm font-bold text-orange-200 tracking-widest uppercase flex items-center gap-2">
+                <div className="glass-card p-0 overflow-hidden flex flex-col h-full border-r-4 border-r-orange-500/50 border-l-0 bg-black/40 backdrop-blur-xl">
+                    <div className="p-4 bg-orange-500/5 border-b border-orange-500/10 flex justify-between items-center relative overflow-hidden">
+                        {/* Scanning Line Animation */}
+                        <div className="absolute top-0 bottom-0 w-[2px] bg-orange-500/50 animate-[scan_4s_ease-in-out_infinite] blur-[2px]"></div>
+
+                        <h2 className="text-sm font-bold text-orange-200 tracking-widest uppercase flex items-center gap-2 z-10">
                             <Zap size={16} className="text-orange-500" /> Solar Intelligence
                         </h2>
-                        <span className="text-[10px] text-green-400 font-mono flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> LIVE HYBRID FEED
+                        <span className="text-[10px] text-green-400 font-mono flex items-center gap-1 z-10 bg-black/50 px-2 py-1 rounded border border-green-500/20">
+                            <Activity size={10} className="animate-pulse" /> LIVE ANALYSIS
                         </span>
                     </div>
-                    <div className="p-6 flex-1 flex flex-col gap-4">
-                        <div className="flex items-start gap-4">
-                            <div className="bg-orange-500/10 p-3 rounded-lg text-orange-400">
-                                <Activity size={24} />
+
+                    <div className="p-6 flex-1 flex flex-col gap-6 relative">
+                        {/* Background Grid */}
+                        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none"></div>
+
+                        {/* Active Regions Status */}
+                        <div className="bg-white/5 p-4 rounded-lg border border-white/5 shadow-inner relative overflow-hidden group hover:border-orange-500/30 transition-colors">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Sunspot Analysis</h3>
+                                <div className="text-xs font-mono text-orange-300">{activeRegions.length} Detected</div>
                             </div>
-                            <div>
-                                <h3 className="text-white font-bold text-sm">Active Regions: {activeRegions.length}</h3>
-                                <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                                    {hasActiveRegions
-                                        ? `Detected ${activeRegions.length} active regions with magnetic complexity. Potential for flaring activity.`
-                                        : "Solar surface is currently quiet. No major active regions detected."}
-                                </p>
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 font-bold text-xl relative">
+                                    {activeRegions.length}
+                                    <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_red]"></div>
+                                </div>
+                                <div className="flex-1">
+                                    <div className="h-1.5 w-full bg-gray-700 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-yellow-500 to-red-500 transition-all duration-1000"
+                                            style={{ width: `${Math.min(activeRegions.length * 20, 100)}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className="flex justify-between mt-1 text-[9px] text-gray-500 font-mono uppercase">
+                                        <span>Quiet</span>
+                                        <span>Active</span>
+                                        <span>Extreme</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* HYBRID ENGINE PANEL */}
-                        <div className={`mt-auto pt-4 border-t border-white/5 transition-colors duration-500 ${calculus.is_warning ? 'bg-red-950/20' : ''}`}>
-                            <div className="flex justify-between items-center mb-2">
-                                <h4 className="text-[10px] text-gray-400 uppercase tracking-wider">Hybrid Engine (Calc + Threshold)</h4>
-                                {calculus.is_warning && (
-                                    <span className="text-[10px] text-red-500 font-bold animate-pulse flex items-center gap-1">
-                                        <Zap size={10} /> {calculus.status}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div className="bg-white/5 p-3 rounded mb-2 border border-white/5">
-                                <div className="text-[10px] text-gray-500 uppercase flex justify-between">
-                                    <span>Algorithm Status</span>
-                                    <span className="text-orange-300/50">{calculus.engine_type}</span>
+                        {/* Hybrid Engine Panel */}
+                        <div className={`flex-1 flex flex-col border border-white/10 rounded-xl p-4 transition-all duration-500 bg-gradient-to-b from-transparent to-black/30 ${calculus.is_warning ? 'border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.1)]' : ''}`}>
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Predictive Engine</div>
+                                    <div className={`text-lg font-bold font-mono ${calculus.is_warning ? 'text-red-400' : 'text-blue-300'}`}>
+                                        {calculus.engine_type}
+                                    </div>
                                 </div>
-                                <div className={`text-sm font-bold mt-1 ${calculus.is_warning ? 'text-orange-200' : 'text-blue-200'}`}>
-                                    {calculus.details}
+                                <div className={`px-2 py-1 rounded text-[10px] font-bold border ${calculus.is_warning ? 'bg-red-500/20 border-red-500 text-red-300 animate-pulse' : 'bg-green-500/10 border-green-500/30 text-green-400'}`}>
+                                    {calculus.is_warning ? 'THREAT DETECTED' : 'NOMINAL'}
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="bg-white/5 p-2 rounded">
-                                    <div className="text-[9px] text-gray-500 uppercase">Rate of Change</div>
-                                    <div className={`font-mono font-bold text-sm ${isRising ? 'text-orange-400' : 'text-blue-400'}`}>
-                                        {slopeScientific}
+                            {/* Calculus Metrics */}
+                            <div className="grid grid-cols-2 gap-3 mt-auto">
+                                <div className="bg-black/40 rounded p-3 border border-white/5">
+                                    <div className="text-[9px] text-gray-500 uppercase mb-1">Flux Slope (Δ)</div>
+                                    <div className={`text-sm font-mono font-bold flex items-center gap-1 ${isRising ? 'text-orange-400' : 'text-blue-400'}`}>
+                                        {isRising ? '▲' : '▼'} {slopeScientific}
                                     </div>
-                                    <div className="text-[8px] text-gray-600">W/m²/min</div>
                                 </div>
+                                <div className="bg-black/40 rounded p-3 border border-white/5">
+                                    <div className="text-[9px] text-gray-500 uppercase mb-1">Threat Probability</div>
+                                    <div className="text-sm font-mono font-bold text-gray-300">
+                                        {calculus.is_warning ? '> 85%' : '< 10%'}
+                                    </div>
+                                </div>
+                            </div>
 
-                                <div className={`p-2 rounded border ${calculus.is_warning ? 'border-red-500/30 bg-red-500/10' : 'border-green-500/10 bg-green-500/5'}`}>
-                                    <div className="text-[9px] uppercase opacity-70 mb-1">Engine Output</div>
-                                    <div className={`text-xs font-bold ${calculus.is_warning ? 'text-red-400' : 'text-green-400'}`}>
-                                        {calculus.status}
-                                    </div>
-                                </div>
+                            <div className="mt-3 text-[10px] text-gray-400 leading-tight border-t border-white/5 pt-2">
+                                Analysis: <span className="text-gray-300">{calculus.details}</span>
                             </div>
                         </div>
                     </div>
@@ -259,7 +275,7 @@ export const PhysicsView: React.FC = () => {
 
                 {/* Three Threat Types Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    
+
                     {/* Radio Blackouts (R-Scale) */}
                     <div className="bg-red-950/20 border border-red-500/30 rounded-lg p-5">
                         <h4 className="text-lg font-bold text-red-400 mb-2 flex items-center gap-2">

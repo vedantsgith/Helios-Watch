@@ -26,6 +26,9 @@ export const SolarGlobe: React.FC = () => {
             globeEl.current.controls().autoRotateSpeed = 0.5;
             globeEl.current.pointOfView({ altitude: 2.2 });
 
+            // FIX: Disable Zoom to prevent page scroll hijacking
+            globeEl.current.controls().enableZoom = false;
+
             // FIX: Add Ambient Light so Sun isn't half black
             // The Sun emits light, it shouldn't have a shadow side!
             const scene = globeEl.current.scene();
@@ -46,14 +49,7 @@ export const SolarGlobe: React.FC = () => {
 
     const arcsData = useMemo(() => {
         if (!activeRegions || activeRegions.length === 0) {
-            // Fallback
-            return Array.from({ length: 5 }).map(() => ({
-                startLat: (Math.random() - 0.5) * 60,
-                startLng: (Math.random() - 0.5) * 360,
-                endLat: (Math.random() - 0.5) * 60,
-                endLng: (Math.random() - 0.5) * 360,
-                color: ['rgba(255,100,0,0.5)', 'rgba(255,0,0,0.1)']
-            }));
+            return []; // No fake data! If it's quiet, show a quiet sun.
         }
 
         // Map real sunspots to flares

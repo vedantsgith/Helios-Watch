@@ -41,8 +41,19 @@ class User(Base):
     otp_expiry = Column(DateTime, nullable=True)  # Expiration timestamp
 
 
-# Drop and recreate tables on startup (for development only)
-Base.metadata.drop_all(bind=engine)
+
+class LoginHistory(Base):
+    """Log of user login events."""
+    __tablename__ = "login_history"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, index=True) # Foreign Key logic or simple integer reference
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    ip_address = Column(String, nullable=True)
+
+
+# Create tables if they don't exist (Persistence Enabled)
+# Base.metadata.drop_all(bind=engine) # DISABLED: To preserve users/history
 Base.metadata.create_all(bind=engine)
 
 
@@ -141,3 +152,16 @@ def verify_otp(session: Session, email: str, otp_code: str) -> dict:
     except Exception as e:
         session.rollback()
         return {'success': False, 'message': f'Error verifying OTP: {str(e)}'}
+
+def log_user_login(session: Session, user_id: int, ip_address: str = "0.0.0.0"):
+    """
+    Log a successful login event.
+    """
+    try:
+        entry = LoginHistory(user_id=user_id, ip_address=ip_address)
+        session.add(entry)
+        session.commit()
+        print(f"Logged login for User {user_id} from {ip_address}")
+    except Exception as e:
+        print(f"Failed to log login: {e}")
+

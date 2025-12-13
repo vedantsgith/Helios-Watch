@@ -34,21 +34,58 @@ class HybridEngine:
     def analyze(self, points):
         """
         Hybrid Analysis: Combines Calculus (Early Warning) + Threshold (Confirmations)
-        Returns: dict
+        Supports:
+        - List[SolarPoint] for X-Ray Flux
+        - Dict for Telemetry (Wind, Kp, Proton)
         """
-        if not points:
-             return {"slope": 0, "status": "STABLE", "details": "No Data"}
-
-        current_flux = points[-1].flux
-        slope = self.calculate_slope(points)
-        
         status = "STABLE"
         details = "Calm"
         is_warning = False
+        value_display = "N/A" # For email reports
 
-        # --- HYBRID LOGIC ---
+        # --- A. TELEMETRY ANALYSIS (Dict Input) ---
+        if isinstance(points, dict):
+            # Check for various threat types in the single telemetry packet
+            # 1. Solar Wind
+            if points.get("wind_speed", 0) > 800:
+                status = "FAST_SOLAR_WIND"
+                details = f"Wind Speed Critical: {points['wind_speed']:.1f} km/s"
+                is_warning = True
+                value_display = f"{points['wind_speed']} km/s"
+            
+            # 2. Geomagnetic Storm (Kp)
+            elif points.get("kp_index", 0) >= 7:
+                status = "GEOMAGNETIC_STORM"
+                details = f"Severe Storm Detected (Kp-{points['kp_index']})"
+                is_warning = True
+                value_display = f"Kp {points['kp_index']}"
 
-        # 1. CHECK THRESHOLDS (The "If-Else" Logic)
+            # 3. Radiation Storm (Proton)
+            elif points.get("proton_flux", 0) >= 100:
+                status = "RADIATION_STORM"
+                details = f"High Proton Flux: {points['proton_flux']:.1f} pfu"
+                is_warning = True
+                value_display = f"{points['proton_flux']} pfu"
+            
+            return {
+                "slope": 0,
+                "status": status,
+                "details": details,
+                "is_warning": is_warning,
+                "threshold": 0,
+                "value_display": value_display,
+                "engine_type": "TELEMETRY_CHECK"
+            }
+
+        # --- B. X-RAY FLUX ANALYSIS (List Input) ---
+        if not points:
+             return {"slope": 0, "status": "STABLE", "details": "No Data", "is_warning": False}
+
+        current_flux = points[-1].flux
+        slope = self.calculate_slope(points)
+        value_display = f"{current_flux:.2e} W/m²"
+
+        # 1. CHECK THRESHOLDS
         if current_flux >= self.X_CLASS_LIMIT:
             status = "X_CLASS_FLARE"
             details = "MAJOR EVENT IN PROGRESS"
@@ -58,14 +95,13 @@ class HybridEngine:
             details = "Moderate Flare Ongoing"
             is_warning = True
         
-        # 2. CHECK CALCULUS (The "Derivative" Logic)
-        # If not yet a major flare, check for rapid rise
+        # 2. CHECK CALCULUS
         elif slope > self.DERIVATIVE_WARNING:
             status = "RAPID_INTENSIFICATION"
             details = "Early Warning: Flux Rising Fast"
             is_warning = True
         
-        # 3. CHECK DECAY (Negative Slope)
+        # 3. CHECK DECAY
         elif slope < -1e-8 and current_flux > 1e-6:
              details = "Flux Decay (Cooling)"
 
@@ -74,6 +110,7 @@ class HybridEngine:
             "status": status,
             "details": details,
             "is_warning": is_warning,
-            "threshold": self.DERIVATIVE_WARNING, # ADDED: Matches Frontend Interface
+            "threshold": self.DERIVATIVE_WARNING,
+            "value_display": value_display,
             "engine_type": "HYBRID (Calculus + Threshold)"
         }

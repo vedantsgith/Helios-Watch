@@ -35,15 +35,15 @@ def generate_flare(class_type: str, duration_seconds: int = 60, event_type: str 
         # Define Baselines & Peaks
         if event_type == "wind":
             base = 350.0
-            peak = 850.0 # >700 Critical
+            peak = 1200.0 # >800 Critical (Boosted for Alert Testing)
             key = "wind_speed"
         elif event_type == "kp":
             base = 2.0
-            peak = 7.0 # >5 Storm
+            peak = 9.0 # >7 Storm (Boosted from 7.0 to ensure trigger)
             key = "kp_index"
         elif event_type == "proton":
             base = 0.5
-            peak = 500.0 # >100 S2 Storm
+            peak = 2000.0 # >100 S2 Storm (Boosted for drama)
             key = "proton_flux"
         else:
             return []

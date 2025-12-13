@@ -15,7 +15,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from pathlib import Path
-from models import get_db, save_otp_to_user, verify_otp, User
+from models import get_db, save_otp_to_user, verify_otp, log_user_login, User
 
 # Load environment variables from .env file
 env_path = Path(__file__).resolve().parent.parent / '.env'
@@ -227,6 +227,11 @@ def verify_otp_endpoint(request: OTPVerifyRequest, req: Request, db: Session = D
         'id': user.id,
         'email': user.email
     }
+    print(f"[SESSION DEBUG] Session Created for {user.email}: {req.session}")
+
+    # Log login history
+    client_ip = req.client.host if req.client else "Unknown"
+    log_user_login(db, user.id, client_ip)
 
     return {
         'success': True,
@@ -234,3 +239,41 @@ def verify_otp_endpoint(request: OTPVerifyRequest, req: Request, db: Session = D
         'user_id': user.id,
         'email': user.email
     }
+
+def send_alert_email(email: str, alert_data: dict) -> dict:
+    """
+    Send Threat Alert via Gmail SMTP.
+    """
+    if not EMAIL_USER or not EMAIL_PASS:
+        print(f"DEBUG: Alert to {email} skipped (Console Mode)")
+        return {'success': False, 'message': 'No SMTP config'}
+
+    try:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(GMAIL_SMTP_SERVER, GMAIL_SMTP_PORT, context=context) as server:
+            server.login(EMAIL_USER, EMAIL_PASS)
+
+            msg = MIMEMultipart()
+            msg['From'] = EMAIL_USER
+            msg['To'] = email
+            msg['Subject'] = f"⚠ HELIOS ALERT: {alert_data.get('status', 'Threat Detected')}"
+
+            body = f"""⚠ SPACE WEATHER ALERT ⚠
+
+Status: {alert_data.get('status', 'Threat Detected')}
+Details: {alert_data.get('details', 'No details provided')}
+
+Observed Value: {alert_data.get('value_display', 'N/A')}
+(Rate of Change: {alert_data.get('slope', 0):.2e})
+
+Please check the Helios Watch Dashboard immediately.
+"""
+            msg.attach(MIMEText(body, 'plain'))
+            server.send_message(msg)
+            print(f"✔ Alert sent to {email}")
+    
+        return {'success': True, 'message': 'Alert sent'}
+
+    except Exception as e:
+        print(f"❌ Alert Failed: {e}")
+        return {'success': False, 'message': str(e)}

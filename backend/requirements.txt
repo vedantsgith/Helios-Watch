@@ -9,3 +9,5 @@ email-validator
 sqlalchemy
 python-multipart
 python-dotenv
+passlib
+bcrypt

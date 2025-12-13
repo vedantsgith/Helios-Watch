@@ -17,7 +17,7 @@ export const JudgeControlPanel: React.FC = () => {
         try {
             // Matches the backend endpoint (Port 8000)
             // "duration: 17" corresponds to ~5 seconds of playback time (at 0.3s tick rate)
-            await axios.post('http://127.0.0.1:8001/simulate', {
+            await axios.post('http://localhost:8000/simulate', {
                 type: type,
                 duration: 17,
                 event_type: event_type

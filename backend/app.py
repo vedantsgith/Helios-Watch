@@ -10,7 +10,8 @@ from fetcher import fetch_noaa_data
 from simulator import generate_flare
 from derivative_engine import HybridEngine  # NEW: Hybrid Layer
 from pydantic import BaseModel, EmailStr
-from brownie_auth.routes import router as brownie_router
+from brownie_auth.routes import router as brownie_router, send_alert_email
+from models import SessionLocal, User  # For fetching users for alerts
 
 # THIS IS THE MISSING LINE CAUSING YOUR ERROR
 app = FastAPI()
@@ -45,6 +46,7 @@ simulation_queue = []  # Stores fake points to be sent
 is_simulating = False
 hybrid_engine = HybridEngine() # Instantiate Hybrid Engine
 data_cache = []  # Cache for historical data
+last_alert_time = datetime.min  # For email debouncing
 
 # --- AUTH STORAGE (In-Memory for Demo) ---
 otp_store = {}  # {email: otp}
@@ -103,7 +105,7 @@ async def websocket_endpoint(websocket: WebSocket):
         active_connections.remove(websocket)
 
 async def heartbeat():
-    global is_simulating, simulation_queue, update_event, data_cache
+    global is_simulating, simulation_queue, update_event, data_cache, last_alert_time
 
     while True:
         if active_connections:
@@ -129,6 +131,37 @@ async def heartbeat():
                     is_simulating = False
 
                 # Fast updates for smooth animation (adjusted to 300ms as requested)
+                # Fast updates for smooth animation (adjusted to 300ms as requested)
+                # ALERT LOGIC (Simulation Mode)
+                # ALERT LOGIC (Simulation Mode)
+                # Check EVERY item (Flux List OR Telemetry Dict)
+                # if not isinstance(item, dict):
+                #     calc_data = hybrid_engine.analyze([item]) 
+                # else:
+                #     calc_data = hybrid_engine.analyze(item)
+                
+                # SIMPLIFIED: Just pass it. The Engine now handles both.
+                calc_data = hybrid_engine.analyze(item if isinstance(item, dict) else [item])
+
+                if calc_data['is_warning']:
+                        now = datetime.utcnow()
+                        if (now - last_alert_time).total_seconds() > 10:
+                            last_alert_time = now
+                            print(f"⚠ THREAT DETECTED (SIM): {calc_data['status']} - SENDING ALERTS...")
+                            import threading
+                            def dispatch_alerts():
+                                try:
+                                    db = SessionLocal()
+                                    users = db.query(User).all()
+                                    if not users: print("⚠ No users found in DB to alert!")
+                                    for user in users:
+                                        send_alert_email(user.email, calc_data)
+                                        print(f"✔ Alert sent to {user.email}")
+                                    db.close()
+                                except Exception as e:
+                                    print(f"Alert Dispatch Error: {e}")
+                            threading.Thread(target=dispatch_alerts).start()
+
                 await asyncio.sleep(0.3)
                 continue
 
@@ -182,6 +215,8 @@ async def heartbeat():
                     update_event.clear()  # Reset event after waking up
                 except asyncio.TimeoutError:
                     pass  # Just a normal timeout, loop again
+
+
 
         else:
             await asyncio.sleep(1)
@@ -260,6 +295,9 @@ async def logout(request: Request):
 @app.get("/api/auth/me")
 async def get_current_user(request: Request):
     user = request.session.get("user")
+    print(f"[SESSION DEBUG] /me called. Session Keys: {request.session.keys()}")
+    print(f"[SESSION DEBUG] User in session: {user}")
+    
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     # Return user object with id and email (compatible with brownie auth)
