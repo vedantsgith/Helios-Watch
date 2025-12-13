@@ -30,4 +30,72 @@ jobs:
       run: black . --check
     
     - name: Lint code with Flake8
-      run: flake8 .
+      run: flake8 .name: Brownie Challenge 2 - Code Quality
+
+# CHALLENGE REQUIREMENT: Run on Push to Main and Pull Requests
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ---------------------------------------------------
+  # TRACK 1: PYTHON BACKEND (Linter: Flake8, Formatter: Black)
+  # ---------------------------------------------------
+  backend-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black
+
+      # CHALLENGE REQUIREMENT: Formatter Check
+      - name: Check Formatting (Black)
+        # The --check flag fails the build if code isn't formatted, instead of fixing it
+        run: black --check backend/
+
+      # CHALLENGE REQUIREMENT: Linter Check
+      - name: Lint with Flake8
+        run: flake8 backend/ --count --select=E9,F63,F7,F82 --show-source --statistics
+
+  # ---------------------------------------------------
+  # TRACK 2: REACT FRONTEND (Linter: ESLint, Formatter: Prettier)
+  # ---------------------------------------------------
+  frontend-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Frontend Dependencies
+        # We must cd into frontend because that's where package.json is
+        run: |
+          cd frontend
+          npm install
+
+      # CHALLENGE REQUIREMENT: Linter Check
+      - name: Lint (ESLint)
+        run: |
+          cd frontend
+          npx eslint src/ --ext .js,.jsx,.ts,.tsx
+
+      # CHALLENGE REQUIREMENT: Formatter Check
+      - name: Check Formatting (Prettier)
+        run: |
+          cd frontend
+          npx prettier --check "src/**/*.{js,jsx,ts,tsx,css,md}"

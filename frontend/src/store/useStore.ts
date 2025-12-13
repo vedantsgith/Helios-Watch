@@ -70,8 +70,9 @@ export interface SystemState {
     visualSimulation: {
         active: boolean;
         level: 'NONE' | 'M' | 'X';
+        type: 'flux' | 'wind' | 'kp' | 'proton' | 'generic'; // Add Type
     };
-    setVisualSimulation: (active: boolean, level?: 'NONE' | 'M' | 'X') => void;
+    setVisualSimulation: (active: boolean, level?: 'NONE' | 'M' | 'X', type?: 'flux' | 'wind' | 'kp' | 'proton' | 'generic') => void;
 
     // Actions
     addDataPoint: (point: SolarPoint) => void;
@@ -109,11 +110,13 @@ export const useStore = create<SystemState>((set) => ({
     realKpHistory: [],
     realProtonHistory: [],
     activeGraphTab: 'flux', // Default Tab
-    visualSimulation: { active: false, level: 'NONE' },
+    visualSimulation: { active: false, level: 'NONE', type: 'generic' },
     user: null,
 
     setUser: (user) => set({ user }),
-    setVisualSimulation: () => { }, // No-op for now as we reverted sim features
+    setVisualSimulation: (active, level = 'NONE', type = 'generic') => set({
+        visualSimulation: { active, level, type }
+    }),
 
     setHistory: (points) => set({
         realHistory: points,

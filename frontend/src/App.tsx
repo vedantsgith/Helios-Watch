@@ -31,7 +31,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
 };
 
 function Dashboard() {
-  const { addDataPoint, systemStatus, setSystemStatus, currentFlux, spaceWeather, user, setUser } = useStore();
+  const { addDataPoint, systemStatus, setSystemStatus, currentFlux, spaceWeather, user, setUser, activeRegions } = useStore();
   const [currentView, setCurrentView] = useState<'live' | 'history' | 'physics'>('live');
 
   useEffect(() => {
@@ -67,6 +67,8 @@ function Dashboard() {
           useStore.getState().setCalculus(message.payload);
         } else if (message.type === 'telemetry_history_update') {
           useStore.getState().setTelemetryHistory(message.payload);
+        } else if (message.type === 'regions_update') {
+          useStore.getState().setRegions(message.payload.regions);
         }
       } catch (e) {
         console.error("WS Parse Error", e);
@@ -154,14 +156,16 @@ function Dashboard() {
               <div className="grid grid-cols-3 gap-4">
                 <div className="glass-card p-6 flex flex-col justify-center">
                   <p className="text-gray-500 text-xs uppercase mb-1">Active Region</p>
-                  <p className="text-3xl font-bold text-white">AR3514</p>
+                  <p className="text-3xl font-bold text-white">
+                    {activeRegions.length > 0 ? `${activeRegions.length} ACTIVE` : 'QUIET'}
+                  </p>
                 </div>
                 <div className="glass-card p-6 flex flex-col justify-center">
-                  <p className="text-gray-500 text-xs uppercase mb-1">Probability (M-Class)</p>
+                  <p className="text-gray-500 text-xs uppercase mb-1">Flare Risk</p>
                   <p className={`text-3xl font-bold ${currentFlux > 1e-6 ? 'text-orange-400' : 'text-gray-400'}`}>
-                    {currentFlux < 1e-6 ? '10%' :
-                      currentFlux < 5e-6 ? '45%' :
-                        currentFlux < 1e-5 ? '85%' : '99%'}
+                    {currentFlux < 1e-6 ? 'LOW' :
+                      currentFlux < 5e-6 ? 'MODERATE' :
+                        currentFlux < 1e-5 ? 'HIGH' : 'EXTREME'}
                   </p>
                 </div>
                 <div className="glass-card p-6 flex flex-col justify-center">

@@ -1,6 +1,6 @@
 import React from 'react';
 import { SolarGlobe } from '../SolarGlobe';
-import { Wind, Zap, Activity } from 'lucide-react';
+import { Wind, Zap, Activity, Globe } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
 // --- THREAT LOGIC ---
@@ -43,18 +43,29 @@ interface StatBoxProps {
     value: number | string;
     unit: string;
     type: 'wind' | 'kp' | 'proton' | 'flux' | 'neutral';
+    description: string;
 }
 
-const StatBox: React.FC<StatBoxProps> = ({ label, value, unit, type }) => {
+const StatBox: React.FC<StatBoxProps> = ({ label, value, unit, type, description }) => {
     // For 'neutral' types (like Density/Temp), defaults to Blue style
     const style = type === 'neutral'
         ? { color: 'text-blue-400', bg: 'bg-blue-950/30', border: 'border-blue-500/10', status: '', pulse: false }
         : getStatusColor(type, typeof value === 'number' ? value : 0);
 
     return (
-        <div className={`${style.bg} p-4 rounded border ${style.border} transition-all duration-500`}>
+        <div className={`group/stat relative ${style.bg} p-4 rounded border ${style.border} transition-all duration-500 hover:bg-white/5`}>
             <div className="flex justify-between items-center mb-1">
-                <p className={`text-[10px] uppercase tracking-wider ${style.color}`}>{label}</p>
+                <p className={`text-[10px] uppercase tracking-wider ${style.color} flex items-center gap-1`}>
+                    {label}
+                    {/* Info Icon with Tooltip */}
+                    <div className="relative group/tooltip">
+                        <div className="cursor-help opacity-50 hover:opacity-100">ⓘ</div>
+                        <div className="absolute left-0 bottom-full mb-2 w-48 p-2 bg-black/90 border border-white/20 rounded text-[9px] text-gray-300 normal-case tracking-normal shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-50 pointer-events-none">
+                            {description}
+                            <div className="absolute left-2 top-full w-2 h-2 bg-black/90 border-r border-b border-white/20 transform rotate-45 -mt-1"></div>
+                        </div>
+                    </div>
+                </p>
                 {style.status && (
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/40 ${style.color} ${style.pulse ? 'animate-pulse' : ''}`}>
                         {style.status}
@@ -183,7 +194,7 @@ export const PhysicsView: React.FC = () => {
                     <div className="absolute inset-0 bg-orange-600/10 blur-[100px] rounded-full pointer-events-none scale-150 transform transition-all duration-1000 animate-pulse-slow"></div>
 
                     {/* 2. The 3D Sun (Floating freely) */}
-                    <div className="w-full h-full flex items-center justify-center scale-125 transition-transform duration-700 hover:scale-130">
+                    <div className="w-full h-full flex items-center justify-center transition-transform duration-700">
                         <SolarGlobe />
                     </div>
 
@@ -217,209 +228,253 @@ export const PhysicsView: React.FC = () => {
                             value={currentFlux.toExponential(2)}
                             unit="W/m²"
                             type="flux"
+                            description="Intensity of solar flares measured by GOES satellites. High flux causes radio blackouts."
                         />
 
+                        {/* 1. Solar Wind Speed (Dynamic) */}
                         {/* 1. Solar Wind Speed (Dynamic) */}
                         <StatBox
                             label="Wind Velocity"
                             value={telemetry.windSpeed.toFixed(0)}
                             unit="km/s"
                             type="wind"
+                            description="Speed of solar particles hitting Earth. Speeds >800 km/s can trigger geomagnetic storms."
                         />
 
+                        {/* 2. Kp Index (Dynamic) */}
                         {/* 2. Kp Index (Dynamic) */}
                         <StatBox
                             label="Geomagnetic Kp"
                             value={telemetry.kpIndex.toFixed(1)}
                             unit="Index"
                             type="kp"
+                            description="Global geomagnetic activity index (0-9). Higher values mean stronger auroras and grid risk."
                         />
 
+                        {/* 3. Proton Flux (Dynamic) */}
                         {/* 3. Proton Flux (Dynamic) */}
                         <StatBox
                             label="Proton Flux (>10MeV)"
                             value={telemetry.protonFlux.toExponential(1)}
                             unit="pfu"
                             type="proton"
+                            description="Density of high-energy protons. High levels (S-Scale) endanger satellites and astronauts."
                         />
 
+                        {/* 4. Density (Neutral) */}
                         {/* 4. Density (Neutral) */}
                         <StatBox
                             label="Plasma Density"
                             value={telemetry.density.toFixed(1)}
                             unit="p/cm³"
                             type="neutral"
+                            description="Concentration of solar wind particles. High density amplifies the impact of geomagnetic storms."
                         />
 
+                        {/* 5. Temperature (Neutral) */}
                         {/* 5. Temperature (Neutral) */}
                         <StatBox
                             label="Ion Temperature"
                             value={(telemetry.temperature / 1000).toFixed(0) + 'k'}
                             unit="Kelvin"
                             type="neutral"
+                            description="Thermal energy of the solar wind. Hotter wind often indicates CMEs or coronal holes."
                         />
                     </div>
                 </div>
 
             </div>
 
-            {/* EDUCATIONAL INFO BOX */}
-            <div className="glass-card p-6 border-l-4 border-l-orange-500/50 max-w-6xl mx-auto">
-                <h3 className="text-2xl font-bold text-orange-200 mb-4 flex items-center gap-2">
-                    <Activity size={22} className="text-orange-500" />
-                    Official NOAA Space Weather Scales
-                </h3>
-                <p className="text-sm text-gray-300 leading-relaxed mb-6">
-                    Helios-Watch implements the <span className="text-orange-300 font-semibold">Official NOAA Space Weather Scales</span>, not arbitrary color coding. Our threat levels are based on internationally recognized scientific standards used by space weather forecasters worldwide. Below are the three distinct threat types monitored by this system.
-                </p>
+            {/* EDUCATIONAL INTELLIGENCE GRID */}
+            <div className="max-w-7xl mx-auto mt-8">
+                <div className="flex items-center gap-3 mb-6 px-4">
+                    <div className="h-px bg-gradient-to-r from-transparent via-orange-500/50 to-transparent flex-1"></div>
+                    <h3 className="text-xl font-bold text-orange-200 uppercase tracking-[0.2em] flex items-center gap-2 text-shadow-sm">
+                        <Activity size={18} className="text-orange-500" />
+                        Threat Intelligence Database
+                    </h3>
+                    <div className="h-px bg-gradient-to-r from-transparent via-orange-500/50 to-transparent flex-1"></div>
+                </div>
 
-                {/* Three Threat Types Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* R-SCALE CARD */}
+                    <div className="group relative bg-black/40 border border-red-500/30 rounded-xl overflow-hidden hover:border-red-500/60 transition-all duration-500 hover:shadow-[0_0_30px_rgba(239,68,68,0.1)]">
+                        <div className="absolute inset-0 bg-gradient-to-b from-red-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <div className="p-5 relative z-10">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <div className="text-[10px] text-red-500 font-mono mb-1">DATA-STREAM // 01</div>
+                                    <h4 className="text-xl font-bold text-white flex items-center gap-2">
+                                        R-SCALE
+                                        <span className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded font-mono">RADIO</span>
+                                    </h4>
+                                </div>
+                                <Zap className="text-red-500 opacity-50 group-hover:opacity-100 transition-opacity" size={24} />
+                            </div>
 
-                    {/* Radio Blackouts (R-Scale) */}
-                    <div className="bg-red-950/20 border border-red-500/30 rounded-lg p-5">
-                        <h4 className="text-lg font-bold text-red-400 mb-2 flex items-center gap-2">
-                            <Zap size={16} />
-                            Radio Blackouts (R-Scale)
-                        </h4>
-                        <div className="text-xs text-gray-400 mb-3 space-y-1">
-                            <p><span className="text-red-300 font-semibold">Trigger:</span> X-Ray Flux (Solar Flares)</p>
-                            <p><span className="text-red-300 font-semibold">Sensor:</span> GOES-16 X-Ray Sensor</p>
-                            <p><span className="text-red-300 font-semibold">Speed:</span> Speed of Light (8 minutes to Earth)</p>
+                            <div className="space-y-4">
+                                <div className="bg-black/30 p-3 rounded border border-white/5">
+                                    <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-400 mb-2">
+                                        <div className="uppercase tracking-wider">Trigger Source</div>
+                                        <div className="text-right text-red-300 font-mono">X-Ray Flux</div>
+                                        <div className="uppercase tracking-wider">Arrival Time</div>
+                                        <div className="text-right text-red-300 font-mono">8.3 Minutes</div>
+                                    </div>
+                                    <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
+                                        <div className="h-full w-3/4 bg-red-500 animate-pulse"></div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs p-2 bg-red-950/20 border-l-2 border-red-500/50 rounded-r">
+                                        <span className="text-gray-300">R1-R2 (Minor)</span>
+                                        <span className="text-red-400 font-bold">M-Class</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs p-2 bg-red-950/30 border-l-2 border-red-500 rounded-r">
+                                        <span className="text-gray-200">R3-R5 (Extreme)</span>
+                                        <span className="text-red-400 font-bold">X-Class</span>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-white/5 pt-3">
+                                    <p className="text-[10px] uppercase text-red-500/70 font-mono mb-1">Physics Analysis:</p>
+                                    <p className="text-[11px] text-gray-300 leading-relaxed mb-2">
+                                        A blast of high-energy photons (X-Rays/UV) traveling at light speed. It ionizes the "D-Region" of Earth's ionosphere, absorbing High Frequency (HF) radio waves.
+                                    </p>
+                                    <p className="text-[11px] text-gray-400">
+                                        <span className="text-red-400 font-bold">IMPACT:</span> Immediate loss of HF radio contact on the sunlit side of Earth. Critical for aviation & maritime.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-xs text-gray-300 leading-relaxed mb-3">
-                            A blast of high-energy photons that ionizes Earth's upper atmosphere (Ionosphere), disrupting radio communications.
-                        </p>
-                        <div className="space-y-2 text-xs">
-                            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2">
-                                <span className="font-bold text-yellow-400">R1-R2 (M-Class):</span>
-                                <span className="text-gray-300"> Minor radio interference</span>
-                            </div>
-                            <div className="bg-orange-500/10 border border-orange-500/30 rounded p-2">
-                                <span className="font-bold text-orange-400">R3 (X1):</span>
-                                <span className="text-gray-300"> Wide area HF radio blackout for 1 hour</span>
-                            </div>
-                            <div className="bg-red-500/10 border border-red-500/30 rounded p-2">
-                                <span className="font-bold text-red-400">R4-R5 (X10+):</span>
-                                <span className="text-gray-300"> Complete HF blackout on sunlit side for hours</span>
-                            </div>
-                        </div>
-                        <p className="text-xs text-blue-300 mt-3 italic">
-                            <span className="font-semibold">Impact:</span> Aviation & Maritime lose HF radio contact over oceans
-                        </p>
                     </div>
 
-                    {/* Geomagnetic Storms (G-Scale) */}
-                    <div className="bg-purple-950/20 border border-purple-500/30 rounded-lg p-5">
-                        <h4 className="text-lg font-bold text-purple-400 mb-2 flex items-center gap-2">
-                            <Zap size={16} />
-                            Geomagnetic Storms (G-Scale)
-                        </h4>
-                        <div className="text-xs text-gray-400 mb-3 space-y-1">
-                            <p><span className="text-purple-300 font-semibold">Trigger:</span> Kp Index (Planetary K-index)</p>
-                            <p><span className="text-purple-300 font-semibold">Sensor:</span> Ground Magnetometers</p>
-                            <p><span className="text-purple-300 font-semibold">Speed:</span> 15 to 72 hours to arrive</p>
+                    {/* G-SCALE CARD */}
+                    <div className="group relative bg-black/40 border border-purple-500/30 rounded-xl overflow-hidden hover:border-purple-500/60 transition-all duration-500 hover:shadow-[0_0_30px_rgba(168,85,247,0.1)]">
+                        <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <div className="p-5 relative z-10">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <div className="text-[10px] text-purple-500 font-mono mb-1">DATA-STREAM // 02</div>
+                                    <h4 className="text-xl font-bold text-white flex items-center gap-2">
+                                        G-SCALE
+                                        <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-mono">STORM</span>
+                                    </h4>
+                                </div>
+                                <Wind className="text-purple-500 opacity-50 group-hover:opacity-100 transition-opacity" size={24} />
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="bg-black/30 p-3 rounded border border-white/5">
+                                    <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-400 mb-2">
+                                        <div className="uppercase tracking-wider">Trigger Source</div>
+                                        <div className="text-right text-purple-300 font-mono">Kp Index</div>
+                                        <div className="uppercase tracking-wider">Arrival Time</div>
+                                        <div className="text-right text-purple-300 font-mono">15 - 72 Hours</div>
+                                    </div>
+                                    <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
+                                        <div className="h-full w-1/2 bg-purple-500 animate-pulse"></div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs p-2 bg-purple-950/20 border-l-2 border-purple-500/50 rounded-r">
+                                        <span className="text-gray-300">G1-G2 (Moderate)</span>
+                                        <span className="text-purple-400 font-bold">Auroras</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs p-2 bg-purple-950/30 border-l-2 border-purple-500 rounded-r">
+                                        <span className="text-gray-200">G4-G5 (Severe)</span>
+                                        <span className="text-purple-400 font-bold">Grid Failure</span>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-white/5 pt-3">
+                                    <p className="text-[10px] uppercase text-purple-500/70 font-mono mb-1">Physics Analysis:</p>
+                                    <p className="text-[11px] text-gray-300 leading-relaxed mb-2">
+                                        A major disturbance in Earth's magnetosphere caused by a solar wind shockwave or CME impact. Can compress the magnetic field and induce ground currents.
+                                    </p>
+                                    <p className="text-[11px] text-gray-400">
+                                        <span className="text-purple-400 font-bold">IMPACT:</span> Voltage instability, power grid collapse (GICs), and disruptions to GPS navigation systems.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-xs text-gray-300 leading-relaxed mb-3">
-                            Disturbance in Earth's magnetic field caused by Solar Wind shockwave or CME (Coronal Mass Ejection).
-                        </p>
-                        <div className="space-y-2 text-xs">
-                            <div className="bg-green-500/10 border border-green-500/30 rounded p-2">
-                                <span className="font-bold text-green-400">G1-G2 (Kp 5-6):</span>
-                                <span className="text-gray-300"> Weak grid fluctuations, high-latitude auroras</span>
-                            </div>
-                            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2">
-                                <span className="font-bold text-yellow-400">G3 (Kp 7):</span>
-                                <span className="text-gray-300"> Voltage alarms, satellite drag corrections needed</span>
-                            </div>
-                            <div className="bg-orange-500/10 border border-orange-500/30 rounded p-2">
-                                <span className="font-bold text-orange-400">G4 (Kp 8):</span>
-                                <span className="text-gray-300"> Voltage control problems, protective systems trip</span>
-                            </div>
-                            <div className="bg-red-500/10 border border-red-500/30 rounded p-2">
-                                <span className="font-bold text-red-400">G5 (Kp 9):</span>
-                                <span className="text-gray-300"> Grid collapse, transformers melt, GPS useless</span>
-                            </div>
-                        </div>
-                        <p className="text-xs text-blue-300 mt-3 italic">
-                            <span className="font-semibold">Impact:</span> Power Grid operators monitor GICs (Geomagnetically Induced Currents)
-                        </p>
                     </div>
 
-                    {/* Solar Radiation Storms (S-Scale) */}
-                    <div className="bg-yellow-950/20 border border-yellow-500/30 rounded-lg p-5">
-                        <h4 className="text-lg font-bold text-yellow-400 mb-2 flex items-center gap-2">
-                            <Zap size={16} />
-                            Solar Radiation Storms (S-Scale)
-                        </h4>
-                        <div className="text-xs text-gray-400 mb-3 space-y-1">
-                            <p><span className="text-yellow-300 font-semibold">Trigger:</span> Proton Flux (&gt;10 MeV)</p>
-                            <p><span className="text-yellow-300 font-semibold">Sensor:</span> GOES-16 SEISS</p>
-                            <p><span className="text-yellow-300 font-semibold">Speed:</span> Relativistic (15 min to hours)</p>
+                    {/* S-SCALE CARD */}
+                    <div className="group relative bg-black/40 border border-yellow-500/30 rounded-xl overflow-hidden hover:border-yellow-500/60 transition-all duration-500 hover:shadow-[0_0_30px_rgba(234,179,8,0.1)]">
+                        <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <div className="p-5 relative z-10">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <div className="text-[10px] text-yellow-500 font-mono mb-1">DATA-STREAM // 03</div>
+                                    <h4 className="text-xl font-bold text-white flex items-center gap-2">
+                                        S-SCALE
+                                        <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded font-mono">RADIATION</span>
+                                    </h4>
+                                </div>
+                                <Activity className="text-yellow-500 opacity-50 group-hover:opacity-100 transition-opacity" size={24} />
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="bg-black/30 p-3 rounded border border-white/5">
+                                    <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-400 mb-2">
+                                        <div className="uppercase tracking-wider">Trigger Source</div>
+                                        <div className="text-right text-yellow-300 font-mono">Proton Flux</div>
+                                        <div className="uppercase tracking-wider">Arrival Time</div>
+                                        <div className="text-right text-yellow-300 font-mono">15 Mins - Hours</div>
+                                    </div>
+                                    <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
+                                        <div className="h-full w-2/3 bg-yellow-500 animate-pulse"></div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs p-2 bg-yellow-950/20 border-l-2 border-yellow-500/50 rounded-r">
+                                        <span className="text-gray-300">S1-S2 (Biological)</span>
+                                        <span className="text-yellow-400 font-bold">Astronauts</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs p-2 bg-yellow-950/30 border-l-2 border-yellow-500 rounded-r">
+                                        <span className="text-gray-200">S3-S5 (Electronic)</span>
+                                        <span className="text-yellow-400 font-bold">Satellites</span>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-white/5 pt-3">
+                                    <p className="text-[10px] uppercase text-yellow-500/70 font-mono mb-1">Physics Analysis:</p>
+                                    <p className="text-[11px] text-gray-300 leading-relaxed mb-2">
+                                        A "blizzard" of high-energy protons accelerated by a solar flare or CME. These particles physically bombard spacecraft and penetrate shielding.
+                                    </p>
+                                    <p className="text-[11px] text-gray-400">
+                                        <span className="text-yellow-400 font-bold">IMPACT:</span> Single Event Upsets (SEUs) in satellite computers, solar panel degradation, and radiation risk to astronauts.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-xs text-gray-300 leading-relaxed mb-3">
-                            A "blizzard" of high-energy protons that physically bombard satellites and penetrate materials.
-                        </p>
-                        <div className="space-y-2 text-xs">
-                            <div className="bg-green-500/10 border border-green-500/30 rounded p-2">
-                                <span className="font-bold text-green-400">S1 (Minor):</span>
-                                <span className="text-gray-300"> No significant impact</span>
-                            </div>
-                            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-2">
-                                <span className="font-bold text-yellow-400">S2-S3 (Moderate):</span>
-                                <span className="text-gray-300"> Single Event Upsets (SEUs) in satellites</span>
-                            </div>
-                            <div className="bg-red-500/10 border border-red-500/30 rounded p-2">
-                                <span className="font-bold text-red-400">S4-S5 (Severe):</span>
-                                <span className="text-gray-300"> Solar panel degradation, ISS crew takes shelter</span>
-                            </div>
-                        </div>
-                        <p className="text-xs text-blue-300 mt-3 italic">
-                            <span className="font-semibold">Impact:</span> Satellite operators enable Safe Mode to protect electronics
-                        </p>
                     </div>
                 </div>
 
-                {/* Summary Table */}
-                <div className="bg-black/40 border border-white/10 rounded-lg p-4">
-                    <h4 className="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wider">Summary: Threat Types</h4>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                            <thead className="border-b border-white/10">
-                                <tr className="text-left">
-                                    <th className="pb-2 px-3 text-orange-300 font-semibold">Threat Type</th>
-                                    <th className="pb-2 px-3 text-orange-300 font-semibold">Trigger</th>
-                                    <th className="pb-2 px-3 text-orange-300 font-semibold">Physics</th>
-                                    <th className="pb-2 px-3 text-orange-300 font-semibold">Target</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-gray-300">
-                                <tr className="border-b border-white/5">
-                                    <td className="py-2 px-3 font-bold text-red-400">Radio Blackout</td>
-                                    <td className="py-2 px-3">X-Ray Flux</td>
-                                    <td className="py-2 px-3">Light (Ionization)</td>
-                                    <td className="py-2 px-3">Aviation (Radio Comms)</td>
-                                </tr>
-                                <tr className="border-b border-white/5">
-                                    <td className="py-2 px-3 font-bold text-purple-400">Geomagnetic Storm</td>
-                                    <td className="py-2 px-3">Kp Index</td>
-                                    <td className="py-2 px-3">Magnetism (Induction)</td>
-                                    <td className="py-2 px-3">Power Grids (Transformers)</td>
-                                </tr>
-                                <tr>
-                                    <td className="py-2 px-3 font-bold text-yellow-400">Radiation Storm</td>
-                                    <td className="py-2 px-3">Proton Flux</td>
-                                    <td className="py-2 px-3">Particles (Bombardment)</td>
-                                    <td className="py-2 px-3">Satellites (Electronics)</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                {/* TACTICAL SUMMARY FOOTER */}
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60 hover:opacity-100 transition-opacity duration-500">
+                    <div className="bg-white/5 rounded p-4 border-l-2 border-orange-500/30 flex items-center gap-4">
+                        <div className="p-2 rounded-full bg-orange-500/10 text-orange-400">
+                            <Activity size={16} />
+                        </div>
+                        <div className="text-[10px] text-gray-400">
+                            <strong className="text-gray-200 block mb-0.5">SCALES SYNCHRONIZED</strong>
+                            Real-time monitoring of NOAA R-Scale, G-Scale, and S-Scale threats via GOES-16 & DSCOVR.
+                        </div>
+                    </div>
+                    <div className="bg-white/5 rounded p-4 border-l-2 border-blue-500/30 flex items-center gap-4">
+                        <div className="p-2 rounded-full bg-blue-500/10 text-blue-400">
+                            <Globe size={16} />
+                        </div>
+                        <div className="text-[10px] text-gray-400">
+                            <strong className="text-gray-200 block mb-0.5">PLANETARY DEFENSE</strong>
+                            Early warning system allows grid operators and satellite teams to mitigate damage.
+                        </div>
                     </div>
                 </div>
-
-                <p className="text-xs text-gray-400 mt-4 text-center italic">
-                    Helios-Watch integrates real-time data from NOAA's Space Weather Prediction Center to monitor all three threat scales simultaneously.
-                </p>
             </div>
         </div>
     );

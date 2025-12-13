@@ -3,24 +3,52 @@ import { useStore } from '../store/useStore';
 import { AlertTriangle } from 'lucide-react';
 
 export const FullScreenAlert: React.FC = () => {
-    const { currentFlux, visualSimulation } = useStore();
-    const [alertLevel, setAlertLevel] = useState<'NONE' | 'M' | 'X'>('NONE');
+    const { currentFlux, visualSimulation, spaceWeather } = useStore();
+    const [alertLevel, setAlertLevel] = useState<'NONE' | 'M' | 'X' | 'WIND' | 'KP' | 'PROTON'>('NONE');
 
     useEffect(() => {
-        // Priority: Visual Simulation -> Real Data
+        // Priority 1: Visual Simulation (Override)
         if (visualSimulation.active) {
-            setAlertLevel(visualSimulation.level);
+            if (visualSimulation.type === 'wind') setAlertLevel('WIND');
+            else if (visualSimulation.type === 'kp') setAlertLevel('KP');
+            else if (visualSimulation.type === 'proton') setAlertLevel('PROTON');
+            else setAlertLevel(visualSimulation.level === 'NONE' ? 'NONE' : visualSimulation.level);
             return;
         }
 
+        // Priority 2: Real Data Analysis
+        // 1. X-Ray Flux
         if (currentFlux >= 1e-4) {
             setAlertLevel('X');
-        } else if (currentFlux >= 1e-5) {
-            setAlertLevel('M');
-        } else {
-            setAlertLevel('NONE');
+            return;
         }
-    }, [currentFlux, visualSimulation]);
+
+        // 2. Solar Wind (> 800 km/s)
+        if (spaceWeather.windSpeed >= 800) {
+            setAlertLevel('WIND');
+            return;
+        }
+
+        // 3. Geomagnetic Storm (Kp >= 7)
+        if (spaceWeather.kpIndex >= 7) {
+            setAlertLevel('KP');
+            return;
+        }
+
+        // 4. Radiation Storm (Proton >= 100)
+        if (spaceWeather.protonFlux >= 100) {
+            setAlertLevel('PROTON');
+            return;
+        }
+
+        // 5. M-Class Flare (Lowest Priority Warning)
+        if (currentFlux >= 1e-5) {
+            setAlertLevel('M');
+            return;
+        }
+
+        setAlertLevel('NONE');
+    }, [currentFlux, visualSimulation, spaceWeather]);
 
     if (alertLevel === 'NONE') return null;
 
@@ -37,23 +65,59 @@ export const FullScreenAlert: React.FC = () => {
         );
     }
 
-    // If X-Class, user requested "Minimal" alert for simulation
+    // If X-Class (or Sim equivalent), user requested "Minimal" alert for simulation
     // We will use a smaller absolute modal instead of full screen takeover
-    const color = 'bg-red-500';
-    const textColor = 'text-red-100';
+
+    // Determine Color & Text based on Type
+    const getAlertConfig = () => {
+        // Handle Non-Flux Alerts (Real OR Sim)
+        switch (alertLevel) {
+            case 'WIND':
+            case 'KP':
+                return {
+                    color: 'bg-purple-500',
+                    border: 'border-purple-500',
+                    text: 'text-purple-100',
+                    iconColor: 'text-purple-400',
+                    title: 'GEOMAGNETIC STORM',
+                    label: alertLevel === 'WIND' ? `WIND: ${spaceWeather.windSpeed.toFixed(0)} km/s` : `Kp INDEX: ${spaceWeather.kpIndex.toFixed(1)}`
+                };
+            case 'PROTON':
+                return {
+                    color: 'bg-yellow-500',
+                    border: 'border-yellow-500',
+                    text: 'text-yellow-100',
+                    iconColor: 'text-yellow-400',
+                    title: 'RADIATION STORM',
+                    label: `PROTON FLUX: ${spaceWeather.protonFlux.toExponential(1)} pfu`
+                };
+            case 'X':
+            default:
+                return {
+                    color: 'bg-red-500',
+                    border: 'border-red-500',
+                    text: 'text-red-100',
+                    iconColor: 'text-red-500',
+                    title: 'X-CLASS DETECTED',
+                    label: `FLUX: ${currentFlux.toExponential(2)} W/m²`
+                };
+        }
+    };
+
+    const config = getAlertConfig();
 
     return (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-bounce">
-            {/* Pulsing Red Aura */}
-            <div className="absolute inset-0 bg-red-500 blur-xl opacity-20 animate-pulse rounded-full"></div>
+            {/* Pulsing Aura */}
+            <div className={`absolute inset-0 ${config.color} blur-xl opacity-20 animate-pulse rounded-full`}></div>
 
-            <div className={`glass-card ${color} bg-opacity-20 border-red-500 text-red-100 px-8 py-4 rounded-xl flex flex-col items-center gap-2 backdrop-blur-md shadow-[0_0_30px_rgba(239,68,68,0.4)]`}>
+            <div className={`glass-card ${config.color} bg-opacity-20 ${config.border} ${config.text} px-8 py-4 rounded-xl flex flex-col items-center gap-2 backdrop-blur-md shadow-[0_0_30px_rgba(255,255,255,0.2)]`}>
                 <div className="flex items-center gap-3">
-                    <AlertTriangle size={32} className="text-red-500 animate-[spin_1s_ease-in-out_infinite]" />
-                    <span className="font-bold tracking-[0.2em] font-mono text-xl">X-CLASS DETECTED</span>
+                    <AlertTriangle size={32} className={`${config.iconColor} animate-[spin_1s_ease-in-out_infinite]`} />
+                    <span className="font-bold tracking-[0.2em] font-mono text-xl">{config.title}</span>
                 </div>
                 <span className="text-xs opacity-80 font-mono tracking-widest">
-                    FLUX: {currentFlux.toExponential(2)} W/m²
+                    {config.label}
                 </span>
             </div>
         </div>

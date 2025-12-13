@@ -14,6 +14,9 @@ export const JudgeControlPanel: React.FC = () => {
         // Auto-Open the relevant Graph Tab
         setActiveGraphTab(event_type);
 
+        // Optimistically Trigger Visuals
+        useStore.getState().setVisualSimulation(true, 'X', event_type);
+
         try {
             // Matches the backend endpoint (Port 8000)
             // "duration: 17" corresponds to ~5 seconds of playback time (at 0.3s tick rate)
@@ -28,6 +31,7 @@ export const JudgeControlPanel: React.FC = () => {
             // AUTO-REVERT: Wipe simulation data after it finishes playing (5s duration + buffer)
             setTimeout(() => {
                 useStore.getState().revertToRealData();
+                useStore.getState().setVisualSimulation(false, 'NONE', 'generic');
             }, 5500);
 
         } catch (e) {

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import Globe from 'react-globe.gl';
 import { useStore } from '../store/useStore';
 import * as THREE from 'three';
-import { Zap, ShieldAlert } from 'lucide-react';
+// Removed unused imports: Zap, ShieldAlert
 
 export const Heliosphere: React.FC = () => {
     const globeEl = useRef<any>(null);
@@ -11,7 +11,7 @@ export const Heliosphere: React.FC = () => {
     const particlesRef = useRef<THREE.Points | null>(null);
 
     // Store
-    const { visualSimulation, setVisualSimulation } = useStore();
+    const { visualSimulation } = useStore(); // Removed unused setVisualSimulation
 
     // Config: EXACT REFERENCE IMAGE MATCH
     // SUN: Partial view on LEFT edge (cropped by screen)
@@ -21,11 +21,7 @@ export const Heliosphere: React.FC = () => {
     const EARTH_X = 300;  // Right side, closer to center for visibility
     const EARTH_RADIUS = 20;  // Slightly larger for better visibility
 
-    // Simulation Trigger
-    const triggerStorm = (level: 'M' | 'X') => {
-        setVisualSimulation(true, level);
-        setTimeout(() => setVisualSimulation(false, 'NONE'), 4000);
-    };
+    // Removed unused triggerStorm function
 
     // Helper: Glow Texture
     const getGlowTexture = () => {
@@ -141,7 +137,8 @@ export const Heliosphere: React.FC = () => {
             globeEl.current.pointOfView({ altitude: 2.8, lat: 0, lng: 0 });  // Side view!
             globeEl.current.controls().autoRotate = false;
             globeEl.current.controls().enableRotate = true;
-            globeEl.current.controls().enableZoom = true;
+            // FIX: Disable zoom to prevent scroll hijacking
+            globeEl.current.controls().enableZoom = false;
         }
 
         return () => {
