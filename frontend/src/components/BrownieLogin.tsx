@@ -127,9 +127,9 @@ export const BrownieLogin: React.FC = () => {
       <div className="solar-bg"></div>
       <div className="scanlines"></div>
       <div className="vignette"></div>
-      
+
       {/* PULSATING SUN - CORE */}
-      <div 
+      <div
         className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
         style={{
           width: '400px',
@@ -141,9 +141,9 @@ export const BrownieLogin: React.FC = () => {
           zIndex: 1
         }}
       />
-      
+
       {/* OUTER GLOW LAYER */}
-      <div 
+      <div
         className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
         style={{
           width: '800px',
@@ -155,9 +155,9 @@ export const BrownieLogin: React.FC = () => {
           zIndex: 1
         }}
       />
-      
+
       {/* AMBIENT LIGHT REFLECTIONS */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background: 'radial-gradient(ellipse at center, transparent 0%, transparent 40%, rgba(255,69,0,0.05) 70%, rgba(255,140,0,0.1) 100%)',
@@ -165,9 +165,9 @@ export const BrownieLogin: React.FC = () => {
           zIndex: 1
         }}
       />
-      
+
       {/* LIGHT RAYS */}
-      <div 
+      <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
         style={{
           width: '1000px',
@@ -195,7 +195,7 @@ export const BrownieLogin: React.FC = () => {
           zIndex: 0
         }}
       />
-      
+
       <style>{`
         @keyframes move-and-pulse {
           0% {

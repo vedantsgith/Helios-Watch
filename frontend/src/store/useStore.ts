@@ -32,10 +32,16 @@ export interface CalculusData {
     engine_type: string; // "HYBRID"
 }
 
+export interface HistoryPoint {
+    timestamp: string;
+    value: number;
+}
+
 export interface User {
     id: number;
     email: string;
 }
+
 
 export interface SystemState {
     dataPoints: SolarPoint[];
@@ -48,6 +54,18 @@ export interface SystemState {
     calculus: CalculusData;        // New State
     user: User | null;
 
+    // Multi-Metric History (Accumulated on Frontend)
+    windHistory: { timestamp: string; value: number }[];
+    kpHistory: { timestamp: string; value: number }[];
+    protonHistory: HistoryPoint[];
+
+    // Real History (Backup to restore after simulation)
+    realWindHistory: { timestamp: string; value: number }[];
+    realKpHistory: { timestamp: string; value: number }[];
+    realProtonHistory: HistoryPoint[];
+
+    activeGraphTab: 'flux' | 'wind' | 'kp' | 'proton'; // Remote Control for Graph
+
     // Simulation State (Visual Only, does not affect Data/Graphs)
     visualSimulation: {
         active: boolean;
@@ -59,9 +77,12 @@ export interface SystemState {
     addDataPoint: (point: SolarPoint) => void;
     setSystemStatus: (status: 'ONLINE' | 'OFFLINE' | 'CONNECTING') => void;
     setHistory: (points: SolarPoint[]) => void;
-    setSpaceWeather: (data: SpaceWeather) => void;
+    setSpaceWeather: (data: SpaceWeather, isSimulation?: boolean) => void;
     setRegions: (regions: ActiveRegion[]) => void;
     setCalculus: (data: CalculusData) => void;
+    setTelemetryHistory: (history: { wind: any[], kp: any[], proton: any[] }) => void;
+    setActiveGraphTab: (tab: 'flux' | 'wind' | 'kp' | 'proton') => void;
+    revertToRealData: () => void;
     setUser: (user: User | null) => void;
 }
 
@@ -81,16 +102,23 @@ export const useStore = create<SystemState>((set) => ({
     },
     activeRegions: [],
     calculus: { slope: 0, is_warning: false, threshold: 1e-7, status: 'STABLE', details: 'System Normal', engine_type: 'Loading...' },
+    windHistory: [],
+    kpHistory: [],
+    protonHistory: [],
+    realWindHistory: [],
+    realKpHistory: [],
+    realProtonHistory: [],
+    activeGraphTab: 'flux', // Default Tab
     visualSimulation: { active: false, level: 'NONE' },
     user: null,
-    
+
     setUser: (user) => set({ user }),
     setVisualSimulation: () => { }, // No-op for now as we reverted sim features
 
     setHistory: (points) => set({
         realHistory: points,
         // Initialize graph with this history (or a subset)
-        dataPoints: points.slice(-360), // Show last 6 hours (360 mins)
+        dataPoints: points.slice(-1440), // Show last 24 hours (1440 mins)
         currentFlux: points.length > 0 ? points[points.length - 1].flux : 0
     }),
 
@@ -100,7 +128,7 @@ export const useStore = create<SystemState>((set) => ({
         // 1. Simulation Data: Update Graph & Flux ONLY (Visuals)
         // deliberately EXCLUDE from realHistory to keep live data pure.
         if (isSim) {
-            const newDataPoints = [...state.dataPoints, point].slice(-360);
+            const newDataPoints = [...state.dataPoints, point].slice(-1440);
             return {
                 dataPoints: newDataPoints,
                 currentFlux: point.flux,
@@ -109,7 +137,7 @@ export const useStore = create<SystemState>((set) => ({
         }
 
         // 2. Real Data: Update History & Display
-        const newRealHistory = [...state.realHistory, point].slice(-360); // Keep 6 hours
+        const newRealHistory = [...state.realHistory, point].slice(-1440); // Keep 24 hours
 
         // SAFETY: When real data arrives, we strictly reset the view to the Real History.
         // This ensures that any previous simulation data is immediately wiped from the graph,
@@ -127,7 +155,68 @@ export const useStore = create<SystemState>((set) => ({
     }),
 
     setSystemStatus: (status) => set({ systemStatus: status }),
-    setSpaceWeather: (data) => set({ spaceWeather: data }),
+    setSpaceWeather: (data, isSimulation = false) => set((state) => {
+        const now = new Date().toISOString();
+
+        // Map Backend (snake_case) OR Frontend (camelCase) to Store State
+        const incoming = data as any;
+        const mappedData: SpaceWeather = {
+            windSpeed: incoming.windSpeed ?? incoming.wind_speed ?? state.spaceWeather.windSpeed,
+            temp: incoming.temp ?? state.spaceWeather.temp,
+            density: incoming.density ?? state.spaceWeather.density,
+            kpIndex: incoming.kpIndex ?? incoming.kp_index ?? state.spaceWeather.kpIndex,
+            protonFlux: incoming.protonFlux ?? incoming.proton_flux ?? state.spaceWeather.protonFlux
+        };
+
+        const newWindPoint = { timestamp: now, value: mappedData.windSpeed };
+        const newKpPoint = { timestamp: now, value: mappedData.kpIndex };
+        const newProtonPoint = { timestamp: now, value: mappedData.protonFlux };
+
+        if (!isSimulation) {
+            // REAL DATA: Update Real + Display
+            const nextRealWind = [...state.realWindHistory, newWindPoint].slice(-1440);
+            const nextRealKp = [...state.realKpHistory, newKpPoint].slice(-1440);
+            const nextRealProton = [...state.realProtonHistory, newProtonPoint].slice(-1440);
+
+            return {
+                spaceWeather: mappedData,
+                realWindHistory: nextRealWind,
+                realKpHistory: nextRealKp,
+                realProtonHistory: nextRealProton,
+                // On Real Data, we force Reset Display to Real (clears any old sim data)
+                windHistory: nextRealWind,
+                kpHistory: nextRealKp,
+                protonHistory: nextRealProton
+            };
+        } else {
+            // SIMULATION: Update Display ONLY
+            return {
+                spaceWeather: mappedData, // Update current values for dashboard
+                windHistory: [...state.windHistory, newWindPoint].slice(-1440),
+                kpHistory: [...state.kpHistory, newKpPoint].slice(-1440),
+                protonHistory: [...state.protonHistory, newProtonPoint].slice(-1440)
+            };
+        }
+    }),
+
+    revertToRealData: () => set((state) => ({
+        windHistory: state.realWindHistory,
+        kpHistory: state.realKpHistory,
+        protonHistory: state.realProtonHistory
+    })),
+
+    // Set Initial Telemetry History
+    // Set Initial Telemetry History
+    setTelemetryHistory: (history: { wind: any[], kp: any[], proton: any[] }) => set({
+        windHistory: history.wind,
+        kpHistory: history.kp,
+        protonHistory: history.proton,
+        realWindHistory: history.wind,
+        realKpHistory: history.kp,
+        realProtonHistory: history.proton
+    }),
+
     setRegions: (regions) => set({ activeRegions: regions }),
-    setCalculus: (data) => set({ calculus: data })
+    setCalculus: (data) => set({ calculus: data }),
+    setActiveGraphTab: (tab) => set({ activeGraphTab: tab })
 }));

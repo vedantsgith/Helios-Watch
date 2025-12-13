@@ -3,7 +3,7 @@ import Globe from 'react-globe.gl';
 import { useStore } from '../store/useStore';
 
 export const EarthGlobe: React.FC = () => {
-    const globeEl = useRef<any>();
+    const globeEl = useRef<any>(null);
 
     // OPTIMIZATION: Only re-render when 'isDanger' status changes (boolean), 
     // instead of every flux update (number). Prevents ~60 useless re-renders/sec per simulation.
@@ -15,7 +15,7 @@ export const EarthGlobe: React.FC = () => {
     useEffect(() => {
         // Responsive handler
         const updateSize = () => {
-            const width = window.innerWidth < 1024 ? window.innerWidth - 64 : 400;
+            const width = window.innerWidth < 1024 ? window.innerWidth - 64 : 550;
             setDimensions({ w: width, h: width }); // Square aspect ratio
         };
 

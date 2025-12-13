@@ -86,6 +86,13 @@ async def websocket_endpoint(websocket: WebSocket):
             calc_data = hybrid_engine.analyze(points)
             msg_calc = WSMessage(type="calculus_update", payload=calc_data)
             await websocket.send_text(msg_calc.json())
+
+        # --- TELEMETRY HISTORY (Wind & Kp) ---
+        from fetcher import fetch_telemetry_history
+        telemetry_hist = await fetch_telemetry_history()
+        msg_telem_hist = WSMessage(type="telemetry_history_update", payload=telemetry_hist)
+        await websocket.send_text(msg_telem_hist.json())
+
     except Exception as e:
         print(f"Error sending initial data: {e}")
 
@@ -102,8 +109,15 @@ async def heartbeat():
         if active_connections:
             # MODE 1: SIMULATION
             if is_simulating and simulation_queue:
-                point = simulation_queue.pop(0)
-                msg = WSMessage(type="data_update", payload=point.model_dump())
+                item = simulation_queue.pop(0)
+                
+                # Check for Telemetry Dict (Wind/Kp/Proton)
+                if isinstance(item, dict) and item.get("type") == "telemetry_sim":
+                    # Send as Telemetry Update
+                    msg = WSMessage(type="telemetry_update", payload=item)
+                else:
+                    # Send as Flux Data Update (SolarPoint object)
+                    msg = WSMessage(type="data_update", payload=item.model_dump())
 
                 for connection in list(active_connections):
                     try:
@@ -114,8 +128,8 @@ async def heartbeat():
                 if not simulation_queue:
                     is_simulating = False
 
-                # Fast updates for smooth animation
-                await asyncio.sleep(0.1)
+                # Fast updates for smooth animation (adjusted to 300ms as requested)
+                await asyncio.sleep(0.3)
                 continue
 
             # MODE 2: LIVE NOAA
@@ -177,15 +191,16 @@ async def startup_event():
     asyncio.create_task(heartbeat())
 
 class SimulationRequest(BaseModel):
-    type: str  # "M" or "X"
+    type: str  # "M", "X" (for Flux) OR "wind", "kp", "proton" (for Metrics)
     duration: int
+    event_type: str = "flux" # "flux", "wind", "kp", "proton"
 
 @app.post("/simulate")
 async def trigger_simulation(req: SimulationRequest):
     global is_simulating, simulation_queue, update_event
 
-    # Generate the fake points
-    points = generate_flare(req.type, req.duration)
+    # Generate the fake points (Flux Objects OR Telemetry Dicts)
+    points = generate_flare(req.type, req.duration, req.event_type)
 
     # Add to queue
     simulation_queue.extend(points)
