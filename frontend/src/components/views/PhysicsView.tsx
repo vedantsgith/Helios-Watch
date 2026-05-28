@@ -1,42 +1,9 @@
 import React from 'react';
-import { SolarGlobe } from '../SolarGlobe';
+import { SolarGlobe } from '../../features/solar/SolarGlobe';
 import { Wind, Zap, Activity } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { getStatusColor } from '../../utils/solarHelpers';
 
-// --- THREAT LOGIC ---
-const getStatusColor = (type: 'wind' | 'kp' | 'proton' | 'flux' | 'neutral', value: number) => {
-    // Neutral types (like Density/Temp) logic handled in StatBox defaults, but safe fallback here
-    if (type === 'neutral') return { color: 'text-blue-400', bg: 'bg-blue-950/30', border: 'border-blue-500/10', status: '', pulse: false };
-
-    switch (type) {
-        case 'wind':
-            if (value >= 900) return { color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/50', status: 'EXTREME', pulse: true };
-            if (value >= 700) return { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/50', status: 'CRITICAL', pulse: true };
-            if (value >= 500) return { color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/50', status: 'WARNING', pulse: false };
-            return { color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', status: 'NORMAL', pulse: false };
-
-        case 'kp':
-            if (value >= 8) return { color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/50', status: 'EXTREME G4', pulse: true };
-            if (value >= 6) return { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/50', status: 'STORM G2', pulse: true };
-            if (value >= 5) return { color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/50', status: 'UNSETTLED', pulse: false };
-            return { color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', status: 'QUIET', pulse: false };
-
-        case 'proton':
-            if (value >= 1000) return { color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/50', status: 'S3 STRONG', pulse: true };
-            if (value >= 100) return { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/50', status: 'S2 MODERATE', pulse: true };
-            if (value >= 10) return { color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/50', status: 'S1 MINOR', pulse: false };
-            return { color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', status: 'NORMAL', pulse: false };
-
-        case 'flux':
-            if (value >= 1e-4) return { color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/50', status: 'X-CLASS', pulse: true };
-            if (value >= 1e-5) return { color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/50', status: 'M-CLASS', pulse: false };
-            if (value >= 1e-6) return { color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/50', status: 'C-CLASS', pulse: false };
-            return { color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', status: 'QUIET', pulse: false };
-
-        default:
-            return { color: 'text-gray-500', bg: 'bg-gray-500/10', border: 'border-gray-500/20', status: 'UNKNOWN', pulse: false };
-    }
-};
 
 interface StatBoxProps {
     label: string;

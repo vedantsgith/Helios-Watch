@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useStore } from '../../store/useStore';
 import { AlertTriangle, Play, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 
@@ -103,7 +102,6 @@ const generateEventData = (event: typeof HISTORICAL_EVENTS[0]) => {
 };
 
 export const HistoryView: React.FC = () => {
-    const { addDataPoint } = useStore();
     const [selectedEvent, setSelectedEvent] = useState<typeof HISTORICAL_EVENTS[0] | null>(null);
     const [graphData, setGraphData] = useState<any[]>([]);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -131,16 +129,7 @@ export const HistoryView: React.FC = () => {
         }
     }, [isPlaying, graphData]);
 
-    const simulateEvent = (magnitude: number, label: string) => {
-        // Inject a simulated "Historical" point
-        addDataPoint({
-            timestamp: new Date().toISOString(),
-            flux: magnitude,
-            class_type: magnitude >= 1e-4 ? 'X' : 'M',
-            source: 'simulation'
-        });
-        alert(`Injecting Replay Data: ${label}`);
-    };
+    // simulateEvent removed — simulation is now handled by JudgeControlPanel
 
     return (
         <div className="flex flex-col min-h-[60vh] gap-8 animate-in fade-in duration-500 p-6">

@@ -1,11 +1,14 @@
 fastapi
-uvicorn
+uvicorn[standard]
 websockets
 numpy
 pandas
-pydantic
-itsdangerous
-email-validator
+pydantic[email]
 sqlalchemy
 python-multipart
 python-dotenv
+httpx
+# JWT Auth
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt
